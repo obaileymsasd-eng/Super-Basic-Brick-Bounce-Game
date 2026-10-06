@@ -62,6 +62,12 @@ let bricks = [];
 // keys["arrowleft"] is true while the left arrow is held down.
 // ------------------------------------------------------------
 const keys = {};
+// --- RESTART CONFIRMATION ---------------------------------------------  
+// Two states: "normal" and "confirming". Pressing R once asks the  
+// question; pressing R again while confirming restarts.  
+let confirmState = "normal";  
+let rWasDown = false;  
+
 
 document.addEventListener("keydown", function (event) {
   keys[event.key.toLowerCase()] = true;
@@ -73,7 +79,26 @@ document.addEventListener("keydown", function (event) {
 
 document.addEventListener("keyup", function (event) {
   keys[event.key.toLowerCase()] = false;
+  
 });
+// Press R once: show the question. Press R again: restart for real.  
+function checkRestart() {  
+  const rJustPressed = keys["r"] && !rWasDown;  
+  
+  if (confirmState === "normal") {  
+    if (rJustPressed) {  
+      confirmState = "confirming";  
+    }  
+  } else if (confirmState === "confirming") {  
+    if (rJustPressed) {  
+      bricks = makeBricks();   // rebuild the wall  
+      resetBall();  
+      confirmState = "normal";  
+    }  
+  }  
+  
+  rWasDown = keys["r"];  
+}  
 
 
 // ------------------------------------------------------------
@@ -81,6 +106,7 @@ document.addEventListener("keyup", function (event) {
 // what they touched.
 // ------------------------------------------------------------
 function update() {
+    checkRestart();   // R once = ask, R again = restart 
   movePaddle();
   moveBall();
 
@@ -130,6 +156,14 @@ function draw() {
   ctx.fillRect(ball.x, ball.y, ball.width, ball.height);
 
   drawBricks();  // bricks.js
+    if (confirmState === "confirming") {  
+    ctx.fillStyle = "white";  
+    ctx.font = "18px Courier New";  
+    ctx.textAlign = "center";  
+    ctx.fillText("Are you sure you want to restart? Press R again.", WIDTH / 2, HEIGHT / 2);  
+    ctx.textAlign = "left";  
+  }  
+
 }
 
 
