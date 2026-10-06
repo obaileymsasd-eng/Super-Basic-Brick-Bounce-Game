@@ -74,6 +74,9 @@ function bounceOffBricks() {
         ball.y = brick.y + brick.height;   // below the brick
       }
     }
+    // the ball breaks the brick it bounced off  
+    const index = bricks.indexOf(brick);  
+    bricks.splice(index, 1);  
 
     break;  // bounce off one brick per update, then stop looking
   }
