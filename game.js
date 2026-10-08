@@ -66,7 +66,9 @@ const keys = {};
 // Two states: "normal" and "confirming". Pressing R once asks the  
 // question; pressing R again while confirming restarts.  
 let confirmState = "normal";  
-let rWasDown = false;  
+let rWasDown = false;
+let gameState = "playing";   // "playing" or "won"  
+
 
 
 document.addEventListener("keydown", function (event) {
@@ -92,7 +94,8 @@ function checkRestart() {
   } else if (confirmState === "confirming") {  
     if (rJustPressed) {  
       bricks = makeBricks();   // rebuild the wall  
-      resetBall();  
+      resetBall();
+            gameState = "playing";   // leave the won state on restart    
       confirmState = "normal";  
     }  
   }  
@@ -106,13 +109,23 @@ function checkRestart() {
 // what they touched.
 // ------------------------------------------------------------
 function update() {
-    checkRestart();   // R once = ask, R again = restart 
+    checkRestart();   // R once = ask, R again = restart
+      // freeze the game while in the won state  
+  if (gameState === "won") {  
+    return;  
+  }  
+
   movePaddle();
   moveBall();
 
   bounceOffWalls();   // collisions.js
   bounceOffPaddle();  // collisions.js
   bounceOffBricks();  // collisions.js
+    // if every brick is gone, the player has won  
+  if (bricks.length === 0 && gameState === "playing") {  
+    gameState = "won";  
+  }  
+
 
   // The ball fell off the bottom: back to the center.
   if (ball.y > HEIGHT) {
@@ -147,9 +160,20 @@ function moveBall() {
 // DRAW: paints everything on the canvas. Black background,
 // white shapes.
 // ------------------------------------------------------------
-function draw() {
+function draw()
+
   ctx.fillStyle = "black";
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    if (gameState === "won") {  
+    ctx.fillStyle = "white";  
+    ctx.font = "28px Courier New";  
+    ctx.textAlign = "center";  
+    ctx.fillText("YOU WIN!", WIDTH / 2, HEIGHT / 2 - 20);  
+    ctx.font = "18px Courier New";  
+    ctx.fillText("Press R to play again", WIDTH / 2, HEIGHT / 2 + 15);  
+    ctx.textAlign = "left";  
+  }  
+
 
   ctx.fillStyle = "white";
   ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
