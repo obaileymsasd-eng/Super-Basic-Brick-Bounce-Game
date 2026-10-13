@@ -160,7 +160,7 @@ function moveBall() {
 // DRAW: paints everything on the canvas. Black background,
 // white shapes.
 // ------------------------------------------------------------
-function draw()
+function draw() {
 
   ctx.fillStyle = "black";
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
