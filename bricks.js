@@ -32,10 +32,15 @@ function makeBricks() {
   return list;
 }
 
-// Draws every brick in the list.
-function drawBricks() {
-  ctx.fillStyle = "white";
-  for (const brick of bricks) {
-    ctx.fillRect(brick.x, brick.y, brick.width, brick.height);
-  }
-}
+// Draws every brick. Rows get different shades of gray --  
+// brightest at the top, darkest at the bottom.  
+function drawBricks() {  
+  const rowShades = ["#ffffff", "#cccccc", "#999999", "#666666"];  
+  
+  for (const brick of bricks) {  
+    const row = (brick.y - BRICKS_TOP) / (BRICK_HEIGHT + BRICK_GAP);  
+    ctx.fillStyle = rowShades[row];  
+    ctx.fillRect(brick.x, brick.y, brick.width, brick.height);  
+  }  
+}  
+
