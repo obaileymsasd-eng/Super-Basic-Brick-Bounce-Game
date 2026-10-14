@@ -31,6 +31,9 @@ function bounceOffWalls() {
   if (ball.y < 0) {
     ball.y = 0;
     ball.vy = -ball.vy;
+        // touching the paddle ends the streak: back to 1x  
+    combo = 1;  
+
   }
 }
 
@@ -79,6 +82,10 @@ function bounceOffBricks() {
     bricks.splice(index, 1);
         // breaking a brick earns points  
     score = score + 10;    
+        // combo pays out: points multiplied, then the multiplier grows  
+    score = score + 10 * combo;  
+    combo = combo + 0.5;  
+
 
     break;  // bounce off one brick per update, then stop looking
   }

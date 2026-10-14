@@ -71,6 +71,13 @@ let gameState = "playing";   // "playing" or "won"
 // --- SCORE -------------------------------------------------------------  
 // A singleton: there is only one score, and every file shares it.  
 let score = 0;  
+     
+
+// --- COMBO --------------------------------------------------------------  
+// Multiplier for bricks broken without touching the paddle.  
+// Grows by 0.5 per brick, resets to 1x on a paddle bounce.  
+let combo = 1;  
+
 
 
 
@@ -99,7 +106,8 @@ function checkRestart() {
     if (rJustPressed) {  
       bricks = makeBricks();   // rebuild the wall  
       resetBall();
-            score = 0;   // a fresh game starts at zero  
+            score = 0;   // a fresh game starts at zero
+            combo = 1;   // a fresh game starts at 1x  
             gameState = "playing";   // leave the won state on restart    
       confirmState = "normal";  
     }  
@@ -196,7 +204,12 @@ function draw() {
         // show the score, fixed in the top-left corner    
   ctx.fillStyle = "white";    
   ctx.font = "16px Courier New";    
-  ctx.fillText("SCORE " + score, 10, 20);    
+  ctx.fillText("SCORE " + score, 10, 20);   
+    // show the combo next to the score, only when it's above 1x  
+  if (combo > 1) {  
+    ctx.fillText("COMBO x" + combo, 10, 45);  
+  }  
+ 
 
 
 }
