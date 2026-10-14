@@ -67,7 +67,11 @@ const keys = {};
 // question; pressing R again while confirming restarts.  
 let confirmState = "normal";  
 let rWasDown = false;
-let gameState = "playing";   // "playing" or "won"  
+let gameState = "playing";   // "playing" or "won"
+// --- SCORE -------------------------------------------------------------  
+// A singleton: there is only one score, and every file shares it.  
+let score = 0;  
+
 
 
 
@@ -95,6 +99,7 @@ function checkRestart() {
     if (rJustPressed) {  
       bricks = makeBricks();   // rebuild the wall  
       resetBall();
+            score = 0;   // a fresh game starts at zero  
             gameState = "playing";   // leave the won state on restart    
       confirmState = "normal";  
     }  
@@ -161,7 +166,7 @@ function moveBall() {
 // white shapes.
 // ------------------------------------------------------------
 function draw() {
-
+  
   ctx.fillStyle = "black";
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
     if (gameState === "won") {  
@@ -172,6 +177,7 @@ function draw() {
     ctx.font = "18px Courier New";  
     ctx.fillText("Press R to play again", WIDTH / 2, HEIGHT / 2 + 15);  
     ctx.textAlign = "left";  
+    
   }  
 
 
@@ -187,6 +193,11 @@ function draw() {
     ctx.fillText("Are you sure you want to restart? Press R again.", WIDTH / 2, HEIGHT / 2);  
     ctx.textAlign = "left";  
   }  
+        // show the score, fixed in the top-left corner    
+  ctx.fillStyle = "white";    
+  ctx.font = "16px Courier New";    
+  ctx.fillText("SCORE " + score, 10, 20);    
+
 
 }
 

@@ -76,7 +76,9 @@ function bounceOffBricks() {
     }
     // the ball breaks the brick it bounced off  
     const index = bricks.indexOf(brick);  
-    bricks.splice(index, 1);  
+    bricks.splice(index, 1);
+        // breaking a brick earns points  
+    score = score + 10;    
 
     break;  // bounce off one brick per update, then stop looking
   }
