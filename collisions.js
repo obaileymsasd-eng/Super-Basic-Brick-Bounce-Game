@@ -81,8 +81,6 @@ function bounceOffBricks() {
     // the ball breaks the brick it bounced off  
     const index = bricks.indexOf(brick);  
     bricks.splice(index, 1);
-        // breaking a brick earns points  
-    score = score + 10;    
         // combo pays out: points multiplied, then the multiplier grows  
     score = score + 10 * combo;  
     combo = combo + 0.5;  
