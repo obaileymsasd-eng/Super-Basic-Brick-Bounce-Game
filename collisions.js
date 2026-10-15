@@ -31,8 +31,6 @@ function bounceOffWalls() {
   if (ball.y < 0) {
     ball.y = 0;
     ball.vy = -ball.vy;
-        // touching the paddle ends the streak: back to 1x  
-    combo = 1;  
 
   }
 }
@@ -45,6 +43,9 @@ function bounceOffPaddle() {
   if (boxesTouch(ball, paddle) && ball.vy > 0) {
     ball.y = paddle.y - ball.height;  // sit on top of the paddle
     ball.vy = -ball.vy;
+ // touching the paddle ends the streak: back to 1x  
+    combo = 1;  
+
   }
 }
 
