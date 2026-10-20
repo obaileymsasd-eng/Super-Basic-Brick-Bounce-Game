@@ -317,6 +317,7 @@ function updatePowerUpTimers() {
       setPaddleWidth(PADDLE_BASE_WIDTH);
     }
   }
+}
 
 function moveBall() {
   ball.x = ball.x + ball.vx;
