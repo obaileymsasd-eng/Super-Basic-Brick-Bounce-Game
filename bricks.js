@@ -32,15 +32,25 @@ function makeBricks() {
   return list;
 }
 
-// Draws every brick. Rows get different shades of gray --  
-// brightest at the top, darkest at the bottom.  
-function drawBricks() {  
-  const rowShades = ["#ffffff", "#cccccc", "#999999", "#666666"];  
-  
-  for (const brick of bricks) {  
-    const row = (brick.y - BRICKS_TOP) / (BRICK_HEIGHT + BRICK_GAP);  
-    ctx.fillStyle = rowShades[row];  
-    ctx.fillRect(brick.x, brick.y, brick.width, brick.height);  
-  }  
-}  
+// Each row gets its own neon color, with a bright edge and soft glow.
+function drawBricks() {
+  const rowColors = ["#ff477e", "#ff9f43", "#d7ff47", "#39f5ff"];
+
+  for (const brick of bricks) {
+    const row = Math.round((brick.y - BRICKS_TOP) / (BRICK_HEIGHT + BRICK_GAP));
+    const color = rowColors[row];
+
+    ctx.save();
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = color;
+    ctx.fillRect(brick.x, brick.y, brick.width, brick.height);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "rgba(255, 255, 255, 0.42)";
+    ctx.fillRect(brick.x + 2, brick.y + 2, brick.width - 4, 2);
+    ctx.fillStyle = "rgba(8, 13, 24, 0.38)";
+    ctx.fillRect(brick.x + 2, brick.y + brick.height - 4, brick.width - 4, 2);
+    ctx.restore();
+  }
+}
 

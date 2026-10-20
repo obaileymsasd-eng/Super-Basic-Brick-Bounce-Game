@@ -3,13 +3,40 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Block Breaker</title>
+  <meta name="theme-color" content="#080d18">
+  <title>Neon Break // Arcade</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <main>
-    <canvas id="game" width="600" height="450" aria-label="Block Breaker game"></canvas>
-    <p>Move the paddle with the left and right arrow keys, or A and D.</p>
+  <main class="arcade-shell">
+    <header class="masthead">
+      <div>
+        <p class="eyebrow">NIGHT CITY ARCADE <span>//</span> CABINET 08</p>
+        <h1>NEON<span class="title-slash">//</span><span class="title-accent">BREAK</span></h1>
+      </div>
+      <p class="system-status"><span class="status-light"></span> SYSTEM ONLINE</p>
+    </header>
+
+    <section class="game-frame" aria-label="Neon Break game">
+      <div class="frame-labels" aria-hidden="true">
+        <span>SECTOR 08</span>
+        <span>ARCADE SIMULATION <b>●</b></span>
+      </div>
+      <canvas id="game" width="600" height="450" aria-label="Neon Break game"></canvas>
+    </section>
+
+    <footer class="control-strip">
+      <span class="control-label">MOVE</span>
+      <kbd>←</kbd><kbd>→</kbd>
+      <span class="control-divider">OR</span>
+      <kbd>A</kbd><kbd>D</kbd>
+      <span class="strip-spacer"></span>
+      <span class="control-label">RESTART</span>
+      <kbd>R</kbd>
+    </footer>
   </main>
 
   <!-- The order matters: game.js goes first because the other files use its settings. -->

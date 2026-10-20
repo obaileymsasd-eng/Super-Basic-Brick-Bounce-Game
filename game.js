@@ -168,49 +168,107 @@ function moveBall() {
   ball.y = ball.y + ball.vy;
 }
 
+function drawArena() {
+  const background = ctx.createLinearGradient(0, 0, 0, HEIGHT);
+  background.addColorStop(0, "#101b2c");
+  background.addColorStop(1, "#07111b");
+  ctx.fillStyle = background;
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+  ctx.save();
+  ctx.strokeStyle = "rgba(57, 245, 255, 0.11)";
+  ctx.lineWidth = 1;
+  for (let x = 20; x < WIDTH; x += 30) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, HEIGHT);
+    ctx.stroke();
+  }
+  for (let y = 20; y < HEIGHT; y += 30) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(WIDTH, y);
+    ctx.stroke();
+  }
+
+  ctx.shadowColor = "#39f5ff";
+  ctx.shadowBlur = 12;
+  ctx.strokeStyle = "rgba(57, 245, 255, 0.55)";
+  ctx.beginPath();
+  ctx.moveTo(0, HEIGHT - 1);
+  ctx.lineTo(WIDTH, HEIGHT - 1);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawPaddle() {
+  const paddleGradient = ctx.createLinearGradient(paddle.x, 0, paddle.x + paddle.width, 0);
+  paddleGradient.addColorStop(0, "#ff477e");
+  paddleGradient.addColorStop(0.18, "#39f5ff");
+  paddleGradient.addColorStop(0.82, "#39f5ff");
+  paddleGradient.addColorStop(1, "#ff477e");
+
+  ctx.save();
+  ctx.shadowColor = "#39f5ff";
+  ctx.shadowBlur = 18;
+  ctx.fillStyle = paddleGradient;
+  ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
+  ctx.restore();
+}
+
+function drawBall() {
+  ctx.save();
+  ctx.shadowColor = "#d7ff47";
+  ctx.shadowBlur = 20;
+  ctx.fillStyle = "#efffa0";
+  ctx.fillRect(ball.x, ball.y, ball.width, ball.height);
+  ctx.restore();
+}
+
 
 // ------------------------------------------------------------
-// DRAW: paints everything on the canvas. Black background,
-// white shapes.
+// DRAW: paints the neon arena and its game objects.
 // ------------------------------------------------------------
 function draw() {
-  
-  ctx.fillStyle = "black";
-  ctx.fillRect(0, 0, WIDTH, HEIGHT);
-    if (gameState === "won") {  
-    ctx.fillStyle = "white";  
-    ctx.font = "28px Courier New";  
-    ctx.textAlign = "center";  
-    ctx.fillText("YOU WIN!", WIDTH / 2, HEIGHT / 2 - 20);  
-    ctx.font = "18px Courier New";  
-    ctx.fillText("Press R to play again", WIDTH / 2, HEIGHT / 2 + 15);  
-    ctx.textAlign = "left";  
-    
-  }  
+  drawArena();
+  drawBricks();
+  drawPaddle();
+  drawBall();
 
+  ctx.save();
+  ctx.font = "700 12px 'Space Mono', monospace";
+  ctx.textBaseline = "top";
+  ctx.fillStyle = "#8a9bad";
+  ctx.fillText("SCORE //", 14, 11);
+  ctx.fillStyle = "#39f5ff";
+  ctx.fillText(String(score).padStart(5, "0"), 100, 11);
+  ctx.textAlign = "right";
+  ctx.fillStyle = "#8a9bad";
+  ctx.fillText("BLOCKS // " + bricks.length, WIDTH - 14, 11);
+  if (combo > 1) {
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#d7ff47";
+    ctx.fillText("COMBO x" + combo, 14, 31);
+  }
+  ctx.restore();
 
-  ctx.fillStyle = "white";
-  ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
-  ctx.fillRect(ball.x, ball.y, ball.width, ball.height);
-
-  drawBricks();  // bricks.js
-    if (confirmState === "confirming") {  
-    ctx.fillStyle = "white";  
-    ctx.font = "18px Courier New";  
-    ctx.textAlign = "center";  
-    ctx.fillText("Are you sure you want to restart? Press R again.", WIDTH / 2, HEIGHT / 2);  
-    ctx.textAlign = "left";  
-  }  
-        // show the score, fixed in the top-left corner    
-  ctx.fillStyle = "white";    
-  ctx.font = "16px Courier New";    
-  ctx.fillText("SCORE " + score, 10, 20);   
-    // show the combo next to the score, only when it's above 1x  
-  if (combo > 1) {  
-    ctx.fillText("COMBO x" + combo, 10, 45);  
-  }  
- 
-
+  if (gameState === "won" || confirmState === "confirming") {
+    ctx.fillStyle = "rgba(5, 10, 20, 0.78)";
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.shadowBlur = 18;
+    ctx.shadowColor = gameState === "won" ? "#39f5ff" : "#ff477e";
+    ctx.fillStyle = gameState === "won" ? "#39f5ff" : "#ff477e";
+    ctx.font = "700 28px 'Orbitron', monospace";
+    ctx.fillText(gameState === "won" ? "SYSTEM CLEARED" : "RESTART?", WIDTH / 2, HEIGHT / 2 - 18);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "#e7f2ff";
+    ctx.font = "12px 'Space Mono', monospace";
+    ctx.fillText(gameState === "won" ? "PRESS R TO PLAY AGAIN" : "PRESS R AGAIN TO CONFIRM", WIDTH / 2, HEIGHT / 2 + 20);
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+  }
 
 }
 
