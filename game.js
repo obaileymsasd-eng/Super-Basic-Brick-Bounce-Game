@@ -11,6 +11,8 @@ const ctx = canvas.getContext("2d");
 
 const WIDTH = canvas.width;   // 600
 const HEIGHT = canvas.height; // 450
+const MAX_LIVES = 3;
+const LIFE_COLORS = ["#39f5ff", "#ff477e", "#d7ff47"];
 
 
 // ------------------------------------------------------------
@@ -67,7 +69,8 @@ const keys = {};
 // question; pressing R again while confirming restarts.  
 let confirmState = "normal";  
 let rWasDown = false;
-let gameState = "playing";   // "playing" or "won"
+let gameState = "playing";   // "playing", "won", or "lost"
+let lives = MAX_LIVES;
 // --- SCORE -------------------------------------------------------------  
 // A singleton: there is only one score, and every file shares it.  
 let score = 0;  
@@ -108,6 +111,7 @@ function checkRestart() {
       resetBall();
             score = 0;   // a fresh game starts at zero
             combo = 1;   // a fresh game starts at 1x  
+        lives = MAX_LIVES;
             gameState = "playing";   // leave the won state on restart    
       confirmState = "normal";  
     }  
@@ -124,7 +128,7 @@ function checkRestart() {
 function update() {
     checkRestart();   // R once = ask, R again = restart
       // freeze the game while in the won state  
-  if (gameState === "won") {  
+  if (gameState === "won" || gameState === "lost") {  
     return;  
   }  
 
@@ -142,7 +146,12 @@ function update() {
 
   // The ball fell off the bottom: back to the center.
   if (ball.y > HEIGHT) {
-    resetBall();
+    lives = lives - 1;
+    if (lives === 0) {
+      gameState = "lost";
+    } else {
+      resetBall();
+    }
   }
 }
 
@@ -217,10 +226,11 @@ function drawPaddle() {
 }
 
 function drawBall() {
+  const color = LIFE_COLORS[MAX_LIVES - lives] || LIFE_COLORS[0];
   ctx.save();
-  ctx.shadowColor = "#d7ff47";
+  ctx.shadowColor = color;
   ctx.shadowBlur = 20;
-  ctx.fillStyle = "#efffa0";
+  ctx.fillStyle = color;
   ctx.fillRect(ball.x, ball.y, ball.width, ball.height);
   ctx.restore();
 }
@@ -250,9 +260,22 @@ function draw() {
     ctx.fillStyle = "#d7ff47";
     ctx.fillText("COMBO x" + combo, 14, 31);
   }
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#8a9bad";
+  ctx.fillText("LIVES", WIDTH - 136, 31);
+  for (let index = 0; index < MAX_LIVES; index++) {
+    const isRemainingLife = index >= MAX_LIVES - lives;
+    ctx.globalAlpha = isRemainingLife ? 1 : 0.18;
+    ctx.fillStyle = LIFE_COLORS[index];
+    ctx.shadowColor = LIFE_COLORS[index];
+    ctx.shadowBlur = isRemainingLife ? 8 : 0;
+    ctx.beginPath();
+    ctx.arc(WIDTH - 75 + index * 22, 37, 5, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.restore();
 
-  if (gameState === "won" || confirmState === "confirming") {
+  if (gameState === "won" || gameState === "lost" || confirmState === "confirming") {
     ctx.fillStyle = "rgba(5, 10, 20, 0.78)";
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
     ctx.textAlign = "center";
@@ -261,11 +284,19 @@ function draw() {
     ctx.shadowColor = gameState === "won" ? "#39f5ff" : "#ff477e";
     ctx.fillStyle = gameState === "won" ? "#39f5ff" : "#ff477e";
     ctx.font = "700 28px 'Orbitron', monospace";
-    ctx.fillText(gameState === "won" ? "SYSTEM CLEARED" : "RESTART?", WIDTH / 2, HEIGHT / 2 - 18);
+    const title = confirmState === "confirming"
+      ? "RESTART?"
+      : gameState === "won" ? "SYSTEM CLEARED" : "GAME OVER";
+    ctx.fillText(title, WIDTH / 2, HEIGHT / 2 - 18);
     ctx.shadowBlur = 0;
     ctx.fillStyle = "#e7f2ff";
     ctx.font = "12px 'Space Mono', monospace";
-    ctx.fillText(gameState === "won" ? "PRESS R TO PLAY AGAIN" : "PRESS R AGAIN TO CONFIRM", WIDTH / 2, HEIGHT / 2 + 20);
+    const prompt = confirmState === "confirming"
+      ? "PRESS R AGAIN TO CONFIRM"
+      : gameState === "won"
+        ? "PRESS R, THEN R AGAIN TO PLAY AGAIN"
+        : "PRESS R, THEN R AGAIN TO RESTART";
+    ctx.fillText(prompt, WIDTH / 2, HEIGHT / 2 + 20);
     ctx.textAlign = "left";
     ctx.textBaseline = "alphabetic";
   }
