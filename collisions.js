@@ -63,7 +63,7 @@ function breakBrick(brick) {
 }
 
 
-// The ball bounces off the bricks. Nothing happens to the brick yet.
+// The ball bounces off and breaks a brick.
 function bounceOffBricks() {
   for (const brick of bricks) {
     if (!boxesTouch(ball, brick)) {

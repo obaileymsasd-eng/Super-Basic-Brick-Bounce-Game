@@ -183,7 +183,7 @@ function update() {
 
 
   // The ball fell off the bottom: back to the center.
-  if (ball.y > HEIGHT) {
+  if (gameState === "playing" && ball.y > HEIGHT) {
     lives = lives - 1;
     if (lives === 0) {
       gameState = "lost";
