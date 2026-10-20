@@ -43,10 +43,23 @@ function bounceOffPaddle() {
   if (boxesTouch(ball, paddle) && ball.vy > 0) {
     ball.y = paddle.y - ball.height;  // sit on top of the paddle
     ball.vy = -ball.vy;
- // touching the paddle ends the streak: back to 1x  
-    combo = 1;  
+    if (comboProtectionTime === 0) {
+      combo = 1;
+    }
 
   }
+}
+
+function breakBrick(brick) {
+  const index = bricks.indexOf(brick);
+  if (index === -1) {
+    return;
+  }
+
+  bricks.splice(index, 1);
+  score = score + 10 * combo;
+  combo = combo + 0.5;
+  spawnPowerUp(brick);
 }
 
 
@@ -78,12 +91,8 @@ function bounceOffBricks() {
         ball.y = brick.y + brick.height;   // below the brick
       }
     }
-    // the ball breaks the brick it bounced off  
-    const index = bricks.indexOf(brick);  
-    bricks.splice(index, 1);
-        // combo pays out: points multiplied, then the multiplier grows  
-    score = score + 10 * combo;  
-    combo = combo + 0.5;  
+    // The ball breaks the brick it bounced off.
+    breakBrick(brick);
 
 
     break;  // bounce off one brick per update, then stop looking

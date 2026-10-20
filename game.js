@@ -13,6 +13,13 @@ const WIDTH = canvas.width;   // 600
 const HEIGHT = canvas.height; // 450
 const MAX_LIVES = 3;
 const LIFE_COLORS = ["#39f5ff", "#ff477e", "#d7ff47"];
+const PADDLE_BASE_WIDTH = 90;
+const POWER_UP_STYLES = {
+  shot: { color: "#ff477e", label: "A" },
+  life: { color: "#d7ff47", label: "+1" },
+  combo: { color: "#ff9f43", label: "C" },
+  wide: { color: "#39f5ff", label: "W" }
+};
 
 
 // ------------------------------------------------------------
@@ -47,7 +54,7 @@ function resetBall() {
 const paddle = {
   x: WIDTH / 2 - 45,
   y: HEIGHT - 30,
-  width: 90,
+  width: PADDLE_BASE_WIDTH,
   height: 12,
   speed: 6
 };
@@ -80,6 +87,13 @@ let score = 0;
 // Multiplier for bricks broken without touching the paddle.  
 // Grows by 0.5 per brick, resets to 1x on a paddle bounce.  
 let combo = 1;  
+let fallingPowerUps = [];
+let projectiles = [];
+let aimCharges = 0;
+let comboProtectionTime = 0;
+let widePaddleTime = 0;
+let mouseX = WIDTH / 2;
+let mouseY = HEIGHT / 2;
 
 
 
@@ -97,6 +111,21 @@ document.addEventListener("keyup", function (event) {
   keys[event.key.toLowerCase()] = false;
   
 });
+
+function updateMousePosition(event) {
+  const bounds = canvas.getBoundingClientRect();
+  mouseX = (event.clientX - bounds.left) * WIDTH / bounds.width;
+  mouseY = (event.clientY - bounds.top) * HEIGHT / bounds.height;
+}
+
+canvas.addEventListener("mousemove", updateMousePosition);
+canvas.addEventListener("click", function (event) {
+  updateMousePosition(event);
+  if (gameState === "playing" && confirmState === "normal" && aimCharges > 0) {
+    fireProjectile();
+  }
+});
+
 // Press R once: show the question. Press R again: restart for real.  
 function checkRestart() {  
   const rJustPressed = keys["r"] && !rWasDown;  
@@ -112,6 +141,12 @@ function checkRestart() {
             score = 0;   // a fresh game starts at zero
             combo = 1;   // a fresh game starts at 1x  
         lives = MAX_LIVES;
+          fallingPowerUps = [];
+          projectiles = [];
+          aimCharges = 0;
+          comboProtectionTime = 0;
+          widePaddleTime = 0;
+          setPaddleWidth(PADDLE_BASE_WIDTH);
             gameState = "playing";   // leave the won state on restart    
       confirmState = "normal";  
     }  
@@ -138,6 +173,9 @@ function update() {
   bounceOffWalls();   // collisions.js
   bounceOffPaddle();  // collisions.js
   bounceOffBricks();  // collisions.js
+  updatePowerUps();
+  updateProjectiles();
+  updatePowerUpTimers();
     // if every brick is gone, the player has won  
   if (bricks.length === 0 && gameState === "playing") {  
     gameState = "won";  
@@ -164,6 +202,10 @@ function movePaddle() {
   }
 
   // Keep the paddle on the screen.
+  clampPaddle();
+}
+
+function clampPaddle() {
   if (paddle.x < 0) {
     paddle.x = 0;
   }
@@ -171,6 +213,110 @@ function movePaddle() {
     paddle.x = WIDTH - paddle.width;
   }
 }
+
+function setPaddleWidth(width) {
+  const center = paddle.x + paddle.width / 2;
+  paddle.width = width;
+  paddle.x = center - paddle.width / 2;
+  clampPaddle();
+}
+
+function spawnPowerUp(brick) {
+  if (!brick.powerUp) {
+    return;
+  }
+
+  fallingPowerUps.push({
+    x: brick.x + brick.width / 2 - 9,
+    y: brick.y + brick.height / 2 - 9,
+    width: 18,
+    height: 18,
+    speed: 2.4,
+    type: brick.powerUp
+  });
+}
+
+function collectPowerUp(type) {
+  if (type === "shot") {
+    aimCharges++;
+  } else if (type === "life") {
+    lives = Math.min(MAX_LIVES, lives + 1);
+  } else if (type === "combo") {
+    comboProtectionTime = 10;
+  } else if (type === "wide") {
+    setPaddleWidth(PADDLE_BASE_WIDTH * 1.5);
+    widePaddleTime = 8;
+  }
+}
+
+function updatePowerUps() {
+  for (let index = fallingPowerUps.length - 1; index >= 0; index--) {
+    const powerUp = fallingPowerUps[index];
+    powerUp.y += powerUp.speed;
+
+    if (boxesTouch(powerUp, paddle)) {
+      collectPowerUp(powerUp.type);
+      fallingPowerUps.splice(index, 1);
+    } else if (powerUp.y > HEIGHT) {
+      fallingPowerUps.splice(index, 1);
+    }
+  }
+}
+
+function fireProjectile() {
+  const startX = paddle.x + paddle.width / 2;
+  const startY = paddle.y;
+  const directionX = mouseX - startX;
+  const directionY = mouseY - startY;
+  const distance = Math.hypot(directionX, directionY) || 1;
+  const speed = 8;
+
+  projectiles.push({
+    x: startX,
+    y: startY,
+    vx: directionX / distance * speed,
+    vy: directionY / distance * speed,
+    radius: 4
+  });
+  aimCharges--;
+}
+
+function updateProjectiles() {
+  for (let shotIndex = projectiles.length - 1; shotIndex >= 0; shotIndex--) {
+    const projectile = projectiles[shotIndex];
+    projectile.x += projectile.vx;
+    projectile.y += projectile.vy;
+
+    if (projectile.x < 0 || projectile.x > WIDTH || projectile.y < 0 || projectile.y > HEIGHT) {
+      projectiles.splice(shotIndex, 1);
+      continue;
+    }
+
+    for (const brick of bricks) {
+      if (
+        projectile.x + projectile.radius > brick.x &&
+        projectile.x - projectile.radius < brick.x + brick.width &&
+        projectile.y + projectile.radius > brick.y &&
+        projectile.y - projectile.radius < brick.y + brick.height
+      ) {
+        breakBrick(brick);
+        projectiles.splice(shotIndex, 1);
+        break;
+      }
+    }
+  }
+}
+
+function updatePowerUpTimers() {
+  const elapsed = STEP / 1000;
+  comboProtectionTime = Math.max(0, comboProtectionTime - elapsed);
+
+  if (widePaddleTime > 0) {
+    widePaddleTime = Math.max(0, widePaddleTime - elapsed);
+    if (widePaddleTime === 0) {
+      setPaddleWidth(PADDLE_BASE_WIDTH);
+    }
+  }
 
 function moveBall() {
   ball.x = ball.x + ball.vx;
@@ -235,6 +381,75 @@ function drawBall() {
   ctx.restore();
 }
 
+function drawPowerUps() {
+  for (const powerUp of fallingPowerUps) {
+    const style = POWER_UP_STYLES[powerUp.type];
+    ctx.save();
+    ctx.translate(powerUp.x + powerUp.width / 2, powerUp.y + powerUp.height / 2);
+    ctx.rotate(Math.PI / 4);
+    ctx.shadowColor = style.color;
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = "#101827";
+    ctx.strokeStyle = style.color;
+    ctx.lineWidth = 2;
+    ctx.fillRect(-7, -7, 14, 14);
+    ctx.strokeRect(-7, -7, 14, 14);
+    ctx.rotate(-Math.PI / 4);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = style.color;
+    ctx.font = "700 9px 'Space Mono', monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(style.label, 0, 0);
+    ctx.restore();
+  }
+}
+
+function drawProjectiles() {
+  ctx.save();
+  ctx.fillStyle = "#ff477e";
+  ctx.shadowColor = "#ff477e";
+  ctx.shadowBlur = 14;
+  for (const projectile of projectiles) {
+    ctx.beginPath();
+    ctx.arc(projectile.x, projectile.y, projectile.radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawAimArrow() {
+  if (aimCharges === 0) {
+    return;
+  }
+
+  const startX = paddle.x + paddle.width / 2;
+  const startY = paddle.y - 5;
+  const angle = Math.atan2(mouseY - startY, mouseX - startX);
+  const endX = startX + Math.cos(angle) * 34;
+  const endY = startY + Math.sin(angle) * 34;
+
+  ctx.save();
+  ctx.strokeStyle = "#ff477e";
+  ctx.fillStyle = "#ff477e";
+  ctx.shadowColor = "#ff477e";
+  ctx.shadowBlur = 12;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(startX, startY);
+  ctx.lineTo(endX, endY);
+  ctx.stroke();
+  ctx.translate(endX, endY);
+  ctx.rotate(angle);
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(-9, -5);
+  ctx.lineTo(-9, 5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
 
 // ------------------------------------------------------------
 // DRAW: paints the neon arena and its game objects.
@@ -242,8 +457,11 @@ function drawBall() {
 function draw() {
   drawArena();
   drawBricks();
+  drawPowerUps();
+  drawProjectiles();
   drawPaddle();
   drawBall();
+  drawAimArrow();
 
   ctx.save();
   ctx.font = "700 12px 'Space Mono', monospace";
@@ -259,6 +477,21 @@ function draw() {
     ctx.textAlign = "left";
     ctx.fillStyle = "#d7ff47";
     ctx.fillText("COMBO x" + combo, 14, 31);
+  }
+  if (comboProtectionTime > 0) {
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#ff9f43";
+    ctx.fillText("SAFE " + comboProtectionTime.toFixed(1) + "s", 132, 31);
+  }
+  if (widePaddleTime > 0) {
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#39f5ff";
+    ctx.fillText("WIDE " + widePaddleTime.toFixed(1) + "s", 244, 31);
+  }
+  if (aimCharges > 0) {
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#ff477e";
+    ctx.fillText("AIM x" + aimCharges, 356, 31);
   }
   ctx.textAlign = "left";
   ctx.fillStyle = "#8a9bad";

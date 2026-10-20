@@ -8,6 +8,7 @@ const BRICK_WIDTH = 60;
 const BRICK_HEIGHT = 20;
 const BRICK_GAP = 6;     // empty space between bricks
 const BRICKS_TOP = 50;   // how far down the first row starts
+const POWER_UP_TYPES = ["shot", "life", "combo", "wide"];
 
 // Builds the list of bricks. Each brick is an object with an
 // x, y, width, and height.
@@ -27,6 +28,14 @@ function makeBricks() {
         height: BRICK_HEIGHT
       });
     }
+  }
+
+  const availableIndices = list.map((_, index) => index);
+  for (let count = 0; count < 4; count++) {
+    const randomIndex = Math.floor(Math.random() * availableIndices.length);
+    const brickIndex = availableIndices.splice(randomIndex, 1)[0];
+    const randomType = POWER_UP_TYPES[Math.floor(Math.random() * POWER_UP_TYPES.length)];
+    list[brickIndex].powerUp = randomType;
   }
 
   return list;
