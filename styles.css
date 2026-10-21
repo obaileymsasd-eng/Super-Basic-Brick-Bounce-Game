@@ -31,6 +31,10 @@ body {
   font-family: "Space Mono", "Courier New", monospace;
 }
 
+button {
+  font: inherit;
+}
+
 body::before {
   position: fixed;
   z-index: -1;
@@ -119,6 +123,167 @@ h1 {
   padding: 10px;
   border: 1px solid #33465a;
   background: #0a111d;
+}
+
+.menu-overlay {
+  position: absolute;
+  inset: 10px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(4, 10, 18, 0.72);
+  backdrop-filter: blur(3px);
+}
+
+.menu-overlay.hidden {
+  display: none;
+}
+
+.menu-panel {
+  width: min(94%, 430px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 22px 18px 18px;
+  border: 1px solid rgba(57, 245, 255, 0.35);
+  background: rgba(8, 13, 24, 0.9);
+  box-shadow: 0 0 28px rgba(57, 245, 255, 0.12), inset 0 0 20px rgba(255, 71, 126, 0.06);
+  text-align: center;
+}
+
+.menu-title {
+  font-family: "Orbitron", sans-serif;
+  font-size: clamp(26px, 5vw, 42px);
+  line-height: 0.9;
+  letter-spacing: 0.12em;
+  font-weight: 800;
+  color: #f4f8ff;
+  text-shadow: 0 0 18px rgba(57, 245, 255, 0.4);
+}
+
+.menu-title span {
+  display: inline-block;
+  margin-top: 8px;
+  color: var(--cyan);
+  text-shadow: 0 0 18px rgba(57, 245, 255, 0.7);
+}
+
+.coin-display {
+  color: var(--acid);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+}
+
+.coin-display strong {
+  color: #fff;
+}
+
+.menu-button,
+.buy-button {
+  border: 1px solid rgba(57, 245, 255, 0.55);
+  background: rgba(10, 15, 27, 0.9);
+  color: #eff7ff;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.menu-button:hover,
+.buy-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 20px rgba(57, 245, 255, 0.18);
+  border-color: rgba(57, 245, 255, 0.9);
+}
+
+.menu-button.primary {
+  width: 100%;
+  padding: 12px 18px;
+  border-color: rgba(255, 71, 126, 0.8);
+  background: linear-gradient(135deg, rgba(255, 71, 126, 0.2), rgba(57, 245, 255, 0.14));
+  font-weight: 700;
+  letter-spacing: 0.2em;
+}
+
+.menu-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.menu-row .menu-button {
+  flex: 1;
+  padding: 10px 12px;
+  letter-spacing: 0.12em;
+}
+
+.menu-panel-body {
+  width: 100%;
+}
+
+.panel-section {
+  display: none;
+  width: 100%;
+  padding-top: 8px;
+}
+
+.panel-section.active {
+  display: block;
+}
+
+.panel-section h3 {
+  margin: 0 0 10px;
+  color: var(--cyan);
+  letter-spacing: 0.16em;
+  font-size: 12px;
+}
+
+.inventory-list,
+.shop-list {
+  display: grid;
+  gap: 8px;
+}
+
+.inventory-item,
+.shop-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(138, 155, 173, 0.35);
+  background: rgba(14, 22, 35, 0.9);
+}
+
+.inventory-item strong,
+.shop-item p {
+  color: #f1f7ff;
+}
+
+.inventory-item span,
+.shop-item small {
+  color: var(--muted);
+}
+
+.rarity-tag {
+  display: inline-block;
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+}
+
+.rarity-tag.common { background: rgba(57, 245, 255, 0.2); color: #9bf8ff; }
+.rarity-tag.uncommon { background: rgba(116, 255, 160, 0.2); color: #9cffc1; }
+.rarity-tag.rare { background: rgba(97, 118, 255, 0.2); color: #b7c1ff; }
+.rarity-tag.epic { background: rgba(188, 97, 255, 0.2); color: #d9abff; }
+.rarity-tag.legendary { background: rgba(255, 189, 89, 0.2); color: #ffd98a; }
+
+.buy-button {
+  padding: 8px 12px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
 }
 
 .game-frame::before,

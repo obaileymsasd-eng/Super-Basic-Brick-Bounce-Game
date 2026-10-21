@@ -59,6 +59,203 @@ const paddle = {
   speed: 6
 };
 
+const RARITY_ORDER = ["common", "uncommon", "rare", "epic", "legendary"];
+const RARITY_INFO = {
+  common: { label: "COMMON", color: "#39f5ff", weight: 45 },
+  uncommon: { label: "UNCOMMON", color: "#7cff9f", weight: 30 },
+  rare: { label: "RARE", color: "#6a7dff", weight: 15 },
+  epic: { label: "EPIC", color: "#c77dff", weight: 8 },
+  legendary: { label: "LEGENDARY", color: "#ffbd59", weight: 2 }
+};
+
+const SAVE_KEY = "neonBreakProgress";
+let menuMode = "inventory";
+let gameState = "menu";
+let score = 0;
+let coins = 0;
+let selectedBall = "common";
+let inventory = {
+  common: 1,
+  uncommon: 0,
+  rare: 0,
+  epic: 0,
+  legendary: 0
+};
+let lastGameRewardGranted = false;
+
+function loadProgress() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SAVE_KEY) || "{}");
+    const loadedInventory = { ...inventory, ...(saved.inventory || {}) };
+    coins = Number(saved.coins || 0);
+    selectedBall = saved.selectedBall || "common";
+    inventory = loadedInventory;
+    if (!inventory[selectedBall]) {
+      selectedBall = "common";
+    }
+  } catch (error) {
+    coins = 0;
+    selectedBall = "common";
+    inventory = { common: 1, uncommon: 0, rare: 0, epic: 0, legendary: 0 };
+  }
+}
+
+function saveProgress() {
+  localStorage.setItem(SAVE_KEY, JSON.stringify({
+    coins,
+    selectedBall,
+    inventory
+  }));
+  const coinCount = document.getElementById("coinCount");
+  if (coinCount) {
+    coinCount.textContent = String(coins);
+  }
+  renderInventory();
+}
+
+function getWeightedRareBall() {
+  const totalWeight = RARITY_ORDER.reduce((sum, rarity) => sum + RARITY_INFO[rarity].weight, 0);
+  let roll = Math.random() * totalWeight;
+
+  for (const rarity of RARITY_ORDER) {
+    roll -= RARITY_INFO[rarity].weight;
+    if (roll <= 0) {
+      return rarity;
+    }
+  }
+
+  return "common";
+}
+
+function renderInventory() {
+  const inventoryList = document.getElementById("inventoryList");
+  const shopList = document.getElementById("shopList");
+
+  if (!inventoryList || !shopList) {
+    return;
+  }
+
+  inventoryList.innerHTML = "";
+  for (const rarity of RARITY_ORDER) {
+    const count = inventory[rarity] || 0;
+    const item = document.createElement("div");
+    item.className = "inventory-item";
+    item.innerHTML = `
+      <div>
+        <span class="rarity-tag ${rarity}">${RARITY_INFO[rarity].label}</span>
+        <br>
+        <small>Owned: ${count}</small>
+      </div>
+      <button class="buy-button" data-select-ball="${rarity}" ${selectedBall === rarity ? "disabled" : ""}>
+        ${selectedBall === rarity ? "SELECTED" : "SELECT"}
+      </button>
+    `;
+    item.querySelector("button").addEventListener("click", () => {
+      if (count > 0) {
+        selectedBall = rarity;
+        saveProgress();
+      }
+    });
+    inventoryList.appendChild(item);
+  }
+
+  shopList.innerHTML = "";
+  for (const rarity of RARITY_ORDER) {
+    const row = document.createElement("div");
+    row.className = "inventory-item";
+    row.innerHTML = `
+      <div>
+        <span class="rarity-tag ${rarity}">${RARITY_INFO[rarity].label}</span>
+      </div>
+      <small>${inventory[rarity] || 0} owned</small>
+    `;
+    shopList.appendChild(row);
+  }
+}
+
+function setMenuMode(mode) {
+  menuMode = mode;
+  const sections = document.querySelectorAll(".panel-section");
+  sections.forEach((section) => {
+    section.classList.toggle("active", section.dataset.panel === mode);
+  });
+}
+
+function openBallCase() {
+  if (coins < 150) {
+    return;
+  }
+
+  coins -= 150;
+  const rarity = getWeightedRareBall();
+  inventory[rarity] = (inventory[rarity] || 0) + 1;
+  selectedBall = rarity;
+  saveProgress();
+}
+
+function grantLastGameReward() {
+  if (lastGameRewardGranted) {
+    return;
+  }
+
+  const reward = Math.floor(score * 0.75);
+  coins += reward;
+  lastGameRewardGranted = true;
+  saveProgress();
+}
+
+function resetGameRound() {
+  score = 0;
+  combo = 1;
+  lives = MAX_LIVES;
+  fallingPowerUps = [];
+  projectiles = [];
+  aimCharges = 0;
+  comboProtectionTime = 0;
+  widePaddleTime = 0;
+  setPaddleWidth(PADDLE_BASE_WIDTH);
+  bricks = makeBricks();
+  resetBall();
+  lastGameRewardGranted = false;
+}
+
+function startGame() {
+  resetGameRound();
+  gameState = "playing";
+  const menuOverlay = document.getElementById("menuOverlay");
+  if (menuOverlay) {
+    menuOverlay.classList.add("hidden");
+  }
+}
+
+function showMenu() {
+  gameState = "menu";
+  const menuOverlay = document.getElementById("menuOverlay");
+  if (menuOverlay) {
+    menuOverlay.classList.remove("hidden");
+  }
+  setMenuMode(menuMode || "inventory");
+}
+
+function bindMenuControls() {
+  const startButton = document.getElementById("startButton");
+  const inventoryButton = document.getElementById("inventoryButton");
+  const shopButton = document.getElementById("shopButton");
+  const openCaseButton = document.getElementById("openCaseButton");
+
+  if (startButton) {
+    startButton.addEventListener("click", startGame);
+  }
+  if (inventoryButton) {
+    inventoryButton.addEventListener("click", () => setMenuMode("inventory"));
+  }
+  if (shopButton) {
+    shopButton.addEventListener("click", () => setMenuMode("shop"));
+  }
+  if (openCaseButton) {
+    openCaseButton.addEventListener("click", openBallCase);
+  }
+}
 
 // ------------------------------------------------------------
 // THE BRICKS (the list is filled in by makeBricks() in bricks.js)
@@ -80,9 +277,6 @@ let gameState = "playing";   // "playing", "won", or "lost"
 let lives = MAX_LIVES;
 // --- SCORE -------------------------------------------------------------  
 // A singleton: there is only one score, and every file shares it.  
-let score = 0;  
-     
-
 // --- COMBO --------------------------------------------------------------  
 // Multiplier for bricks broken without touching the paddle.  
 // Grows by 0.5 per brick, resets to 1x on a paddle bounce.  
@@ -161,11 +355,16 @@ function checkRestart() {
 // what they touched.
 // ------------------------------------------------------------
 function update() {
-    checkRestart();   // R once = ask, R again = restart
-      // freeze the game while in the won state  
-  if (gameState === "won" || gameState === "lost") {  
-    return;  
-  }  
+  if (gameState === "menu") {
+    return;
+  }
+
+  if (gameState === "won" || gameState === "lost") {
+    grantLastGameReward();
+    return;
+  }
+
+  checkRestart();   // R once = ask, R again = restart
 
   movePaddle();
   moveBall();
@@ -377,7 +576,7 @@ function drawPaddle() {
 }
 
 function drawBall() {
-  const color = LIFE_COLORS[MAX_LIVES - lives] || LIFE_COLORS[0];
+  const color = RARITY_INFO[selectedBall]?.color || RARITY_INFO.common.color;
   ctx.save();
   ctx.shadowColor = color;
   ctx.shadowBlur = 20;
@@ -571,8 +770,11 @@ function frame(now) {
 }
 
 function start() {
-  bricks = makeBricks();  // bricks.js
-  resetBall();
+  loadProgress();
+  bindMenuControls();
+  renderInventory();
+  saveProgress();
+  showMenu();
   lastTime = performance.now();
   requestAnimationFrame(frame);
 }

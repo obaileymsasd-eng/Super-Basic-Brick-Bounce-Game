@@ -25,6 +25,40 @@
         <span>SECTOR 08</span>
         <span>ARCADE SIMULATION <b>●</b></span>
       </div>
+
+      <div class="menu-overlay" id="menuOverlay">
+        <div class="menu-panel">
+          <div class="menu-title">NEON<br><span>BREAK</span></div>
+          <div class="coin-display">COINS <strong id="coinCount">0</strong></div>
+
+          <button id="startButton" class="menu-button primary">START</button>
+
+          <div class="menu-row">
+            <button id="inventoryButton" class="menu-button">INVENTORY</button>
+            <button id="shopButton" class="menu-button">SHOP</button>
+          </div>
+
+          <div id="menuPanel" class="menu-panel-body">
+            <div class="panel-section active" data-panel="inventory">
+              <h3>INVENTORY</h3>
+              <div id="inventoryList" class="inventory-list"></div>
+            </div>
+
+            <div class="panel-section" data-panel="shop">
+              <h3>SHOP</h3>
+              <div class="shop-item">
+                <div>
+                  <span class="rarity-tag common">COMMON</span>
+                  <p>Ball Case</p>
+                </div>
+                <button id="openCaseButton" class="buy-button">150 COINS</button>
+              </div>
+              <div id="shopList" class="shop-list"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <canvas id="game" width="600" height="450" aria-label="Neon Break game"></canvas>
     </section>
 
