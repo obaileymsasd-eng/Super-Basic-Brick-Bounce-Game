@@ -196,6 +196,14 @@ h1 {
   border-color: rgba(57, 245, 255, 0.9);
 }
 
+.menu-button:disabled,
+.buy-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
 .menu-button.primary {
   width: 100%;
   padding: 12px 18px;
@@ -258,6 +266,18 @@ h1 {
 .inventory-item strong,
 .shop-item p {
   color: #f1f7ff;
+}
+
+.skin-name {
+  display: inline-block;
+  margin: 5px 0 2px;
+  font-size: 12px;
+}
+
+.inventory-item small {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
 }
 
 .inventory-item span,

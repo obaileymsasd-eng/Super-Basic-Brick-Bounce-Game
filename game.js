@@ -61,11 +61,11 @@ const paddle = {
 
 const RARITY_ORDER = ["common", "uncommon", "rare", "epic", "legendary"];
 const RARITY_INFO = {
-  common: { label: "COMMON", color: "#39f5ff", weight: 45 },
-  uncommon: { label: "UNCOMMON", color: "#7cff9f", weight: 30 },
-  rare: { label: "RARE", color: "#6a7dff", weight: 15 },
-  epic: { label: "EPIC", color: "#c77dff", weight: 8 },
-  legendary: { label: "LEGENDARY", color: "#ffbd59", weight: 2 }
+  common: { label: "COMMON", skin: "Static", color: "#39f5ff", shape: "square", weight: 45 },
+  uncommon: { label: "UNCOMMON", skin: "Verdant", color: "#7cff9f", shape: "circle", weight: 30 },
+  rare: { label: "RARE", skin: "Deep Space", color: "#6a7dff", shape: "diamond", weight: 15 },
+  epic: { label: "EPIC", skin: "Prism", color: "#c77dff", shape: "ring", weight: 8 },
+  legendary: { label: "LEGENDARY", skin: "Solar Flare", color: "#ffbd59", shape: "star", weight: 2 }
 };
 
 const SAVE_KEY = "neonBreakProgress";
@@ -138,12 +138,14 @@ function renderInventory() {
   inventoryList.innerHTML = "";
   for (const rarity of RARITY_ORDER) {
     const count = inventory[rarity] || 0;
+    const skin = RARITY_INFO[rarity];
     const item = document.createElement("div");
     item.className = "inventory-item";
     item.innerHTML = `
       <div>
-        <span class="rarity-tag ${rarity}">${RARITY_INFO[rarity].label}</span>
+        <span class="rarity-tag ${rarity}">${skin.label}</span>
         <br>
+        <strong class="skin-name">${skin.skin}</strong>
         <small>Owned: ${count}</small>
       </div>
       <button class="buy-button" data-select-ball="${rarity}" ${selectedBall === rarity ? "disabled" : ""}>
@@ -161,15 +163,24 @@ function renderInventory() {
 
   shopList.innerHTML = "";
   for (const rarity of RARITY_ORDER) {
+    const skin = RARITY_INFO[rarity];
     const row = document.createElement("div");
     row.className = "inventory-item";
     row.innerHTML = `
       <div>
-        <span class="rarity-tag ${rarity}">${RARITY_INFO[rarity].label}</span>
+        <span class="rarity-tag ${rarity}">${skin.label}</span>
+        <br>
+        <strong class="skin-name">${skin.skin}</strong>
       </div>
-      <small>${inventory[rarity] || 0} owned</small>
+      <small>${skin.weight}% drop | ${inventory[rarity] || 0} owned</small>
     `;
     shopList.appendChild(row);
+  }
+
+  const openCaseButton = document.getElementById("openCaseButton");
+  if (openCaseButton) {
+    openCaseButton.disabled = coins < 150;
+    openCaseButton.title = openCaseButton.disabled ? "Earn more coins to open a case" : "Open a skin case";
   }
 }
 
@@ -273,7 +284,6 @@ const keys = {};
 // question; pressing R again while confirming restarts.  
 let confirmState = "normal";  
 let rWasDown = false;
-let gameState = "playing";   // "playing", "won", or "lost"
 let lives = MAX_LIVES;
 // --- SCORE -------------------------------------------------------------  
 // A singleton: there is only one score, and every file shares it.  
@@ -576,12 +586,50 @@ function drawPaddle() {
 }
 
 function drawBall() {
-  const color = RARITY_INFO[selectedBall]?.color || RARITY_INFO.common.color;
+  const skin = RARITY_INFO[selectedBall] || RARITY_INFO.common;
+  const centerX = ball.x + ball.width / 2;
+  const centerY = ball.y + ball.height / 2;
   ctx.save();
-  ctx.shadowColor = color;
+  ctx.shadowColor = skin.color;
   ctx.shadowBlur = 20;
-  ctx.fillStyle = color;
-  ctx.fillRect(ball.x, ball.y, ball.width, ball.height);
+  ctx.fillStyle = skin.color;
+  ctx.strokeStyle = skin.color;
+  ctx.lineWidth = 2;
+
+  if (skin.shape === "circle") {
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, ball.width / 2, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (skin.shape === "diamond") {
+    ctx.beginPath();
+    ctx.moveTo(centerX, ball.y);
+    ctx.lineTo(ball.x + ball.width, centerY);
+    ctx.lineTo(centerX, ball.y + ball.height);
+    ctx.lineTo(ball.x, centerY);
+    ctx.closePath();
+    ctx.fill();
+  } else if (skin.shape === "ring") {
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, ball.width / 2 - 1, 0, Math.PI * 2);
+    ctx.stroke();
+  } else if (skin.shape === "star") {
+    ctx.beginPath();
+    for (let point = 0; point < 10; point++) {
+      const radius = point % 2 === 0 ? ball.width / 2 : ball.width / 4;
+      const angle = -Math.PI / 2 + point * Math.PI / 5;
+      const x = centerX + Math.cos(angle) * radius;
+      const y = centerY + Math.sin(angle) * radius;
+      if (point === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    }
+    ctx.closePath();
+    ctx.fill();
+  } else {
+    ctx.fillRect(ball.x, ball.y, ball.width, ball.height);
+  }
   ctx.restore();
 }
 
