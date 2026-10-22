@@ -46,15 +46,45 @@
             <div class="panel-section" data-panel="shop">
               <h3>SHOP</h3>
               <div class="shop-item">
-                <div>
+                <div class="case-shop-info">
+                  <img class="case-thumbnail" src="assets/neon-case.png" alt="Neon Break skin case">
+                  <div>
                   <span class="rarity-tag common">COMMON</span>
                   <p>Ball Case</p>
+                  </div>
                 </div>
                 <button id="openCaseButton" class="buy-button">150 COINS</button>
               </div>
               <div id="shopList" class="shop-list"></div>
             </div>
           </div>
+        </div>
+
+        <div id="caseOpening" class="case-opening" aria-hidden="true">
+          <section class="case-dialog" role="dialog" aria-modal="true" aria-labelledby="caseTitle">
+            <div class="case-dialog-heading">
+              <div>
+                <p class="eyebrow">NEON BREAK // DROP TERMINAL</p>
+                <h2 id="caseTitle">BALL CASE</h2>
+              </div>
+              <button id="closeCaseButton" class="case-close" aria-label="Close case opening" disabled>&times;</button>
+            </div>
+            <img class="case-hero" src="assets/neon-case.png" alt="Neon Break case">
+            <p id="caseStatus" class="case-status" aria-live="polite">CASE OPENING...</p>
+            <div id="caseReel" class="case-reel" aria-label="Skin roulette">
+              <div id="caseReelTrack" class="case-reel-track"></div>
+              <span class="reel-marker" aria-hidden="true"></span>
+            </div>
+            <div class="wear-guide" aria-label="Wear condition float ranges">
+              <span>FACTORY NEW <small>0.00-0.07</small></span>
+              <span>MINIMAL WEAR <small>0.07-0.15</small></span>
+              <span>FIELD-TESTED <small>0.15-0.38</small></span>
+              <span>WELL-WORN <small>0.38-0.45</small></span>
+              <span>BATTLE-SCARRED <small>0.45-1.00</small></span>
+            </div>
+            <div id="caseResult" class="case-result" hidden></div>
+            <button id="caseContinueButton" class="menu-button primary case-continue" hidden>CONTINUE</button>
+          </section>
         </div>
       </div>
 

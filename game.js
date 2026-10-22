@@ -67,6 +67,13 @@ const RARITY_INFO = {
   epic: { label: "EPIC", skin: "Prism", color: "#c77dff", shape: "ring", weight: 8 },
   legendary: { label: "LEGENDARY", skin: "Solar Flare", color: "#ffbd59", shape: "star", weight: 2 }
 };
+const WEAR_CONDITIONS = [
+  { label: "Factory New", max: 0.07 },
+  { label: "Minimal Wear", max: 0.15 },
+  { label: "Field-Tested", max: 0.38 },
+  { label: "Well-Worn", max: 0.45 },
+  { label: "Battle-Scarred", max: 1 }
+];
 
 const SAVE_KEY = "neonBreakProgress";
 let menuMode = "inventory";
@@ -81,30 +88,68 @@ let inventory = {
   epic: 0,
   legendary: 0
 };
+let ownedSkins = [{ id: "starter-common", rarity: "common", condition: "Factory New", float: 0.03 }];
+let selectedSkinId = "starter-common";
+let caseAnimating = false;
 let lastGameRewardGranted = false;
 
 function loadProgress() {
   try {
     const saved = JSON.parse(localStorage.getItem(SAVE_KEY) || "{}");
-    const loadedInventory = { ...inventory, ...(saved.inventory || {}) };
     coins = Number(saved.coins || 0);
-    selectedBall = saved.selectedBall || "common";
-    inventory = loadedInventory;
-    if (!inventory[selectedBall]) {
-      selectedBall = "common";
+    if (Array.isArray(saved.skins)) {
+      ownedSkins = saved.skins.filter((skin) =>
+        skin && RARITY_INFO[skin.rarity] && typeof skin.id === "string"
+      ).map((skin) => ({
+        id: skin.id,
+        rarity: skin.rarity,
+        condition: WEAR_CONDITIONS.find((condition) => condition.label === skin.condition)?.label || "Factory New",
+        float: Math.max(0, Math.min(1, Number(skin.float) || 0))
+      }));
+    } else {
+      const legacyInventory = { ...inventory, ...(saved.inventory || {}) };
+      ownedSkins = [];
+      for (const rarity of RARITY_ORDER) {
+        const count = Math.max(0, Math.floor(Number(legacyInventory[rarity]) || 0));
+        for (let index = 0; index < count; index++) {
+          ownedSkins.push({
+            id: `legacy-${rarity}-${index}`,
+            rarity,
+            condition: "Factory New",
+            float: 0.03
+          });
+        }
+      }
     }
+
+    inventory = Object.fromEntries(RARITY_ORDER.map((rarity) => [
+      rarity,
+      ownedSkins.filter((skin) => skin.rarity === rarity).length
+    ]));
+    const savedSelection = ownedSkins.find((skin) => skin.id === saved.selectedSkinId);
+    const fallbackSelection = ownedSkins.find((skin) => skin.rarity === saved.selectedBall) || ownedSkins[0];
+    selectedSkinId = (savedSelection || fallbackSelection)?.id || "";
+    selectedBall = (savedSelection || fallbackSelection)?.rarity || "common";
   } catch (error) {
     coins = 0;
     selectedBall = "common";
     inventory = { common: 1, uncommon: 0, rare: 0, epic: 0, legendary: 0 };
+    ownedSkins = [{ id: "starter-common", rarity: "common", condition: "Factory New", float: 0.03 }];
+    selectedSkinId = "starter-common";
   }
 }
 
 function saveProgress() {
+  inventory = Object.fromEntries(RARITY_ORDER.map((rarity) => [
+    rarity,
+    ownedSkins.filter((skin) => skin.rarity === rarity).length
+  ]));
   localStorage.setItem(SAVE_KEY, JSON.stringify({
     coins,
     selectedBall,
-    inventory
+    selectedSkinId,
+    inventory,
+    skins: ownedSkins
   }));
   const coinCount = document.getElementById("coinCount");
   if (coinCount) {
@@ -127,6 +172,60 @@ function getWeightedRareBall() {
   return "common";
 }
 
+function rollSkin() {
+  const float = Math.random();
+  const condition = WEAR_CONDITIONS.find((wear) => float <= wear.max) || WEAR_CONDITIONS[WEAR_CONDITIONS.length - 1];
+  return {
+    id: `skin-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    rarity: getWeightedRareBall(),
+    condition: condition.label,
+    float
+  };
+}
+
+function createReelCard(skin) {
+  const info = RARITY_INFO[skin.rarity];
+  const card = document.createElement("div");
+  card.className = `reel-card ${skin.rarity}`;
+  card.innerHTML = `
+    <span class="reel-card-rarity">${info.label}</span>
+    <span class="reel-ball ${skin.rarity}" aria-hidden="true"></span>
+    <strong>${info.skin}</strong>
+  `;
+  return card;
+}
+
+function finishCaseOpening(skin) {
+  selectedSkinId = skin.id;
+  selectedBall = skin.rarity;
+  caseAnimating = false;
+  saveProgress();
+
+  const info = RARITY_INFO[skin.rarity];
+  const caseStatus = document.getElementById("caseStatus");
+  const caseResult = document.getElementById("caseResult");
+  const continueButton = document.getElementById("caseContinueButton");
+  const closeButton = document.getElementById("closeCaseButton");
+  caseStatus.textContent = "ITEM ACQUIRED";
+  caseResult.innerHTML = `
+    <span class="rarity-tag ${skin.rarity}">${info.label}</span>
+    <strong>${info.skin}</strong>
+    <span class="condition-tag">${skin.condition}</span>
+    <small>Float: ${skin.float.toFixed(6)}</small>
+  `;
+  caseResult.hidden = false;
+  continueButton.hidden = false;
+  closeButton.disabled = false;
+}
+
+function closeCaseOpening() {
+  if (caseAnimating) {
+    return;
+  }
+  document.getElementById("caseOpening").classList.remove("active");
+  document.getElementById("caseOpening").setAttribute("aria-hidden", "true");
+}
+
 function renderInventory() {
   const inventoryList = document.getElementById("inventoryList");
   const shopList = document.getElementById("shopList");
@@ -137,28 +236,29 @@ function renderInventory() {
 
   inventoryList.innerHTML = "";
   for (const rarity of RARITY_ORDER) {
-    const count = inventory[rarity] || 0;
     const skin = RARITY_INFO[rarity];
-    const item = document.createElement("div");
-    item.className = "inventory-item";
-    item.innerHTML = `
-      <div>
-        <span class="rarity-tag ${rarity}">${skin.label}</span>
-        <br>
-        <strong class="skin-name">${skin.skin}</strong>
-        <small>Owned: ${count}</small>
-      </div>
-      <button class="buy-button" data-select-ball="${rarity}" ${selectedBall === rarity ? "disabled" : ""}>
-        ${selectedBall === rarity ? "SELECTED" : "SELECT"}
-      </button>
-    `;
-    item.querySelector("button").addEventListener("click", () => {
-      if (count > 0) {
+    const skinsOfRarity = ownedSkins.filter((ownedSkin) => ownedSkin.rarity === rarity);
+    for (const ownedSkin of skinsOfRarity) {
+      const item = document.createElement("div");
+      item.className = "inventory-item";
+      item.innerHTML = `
+        <div>
+          <span class="rarity-tag ${rarity}">${skin.label}</span>
+          <br>
+          <strong class="skin-name">${skin.skin}</strong>
+          <small>${ownedSkin.condition} | Float ${ownedSkin.float.toFixed(4)}</small>
+        </div>
+        <button class="buy-button" ${selectedSkinId === ownedSkin.id ? "disabled" : ""}>
+          ${selectedSkinId === ownedSkin.id ? "EQUIPPED" : "EQUIP"}
+        </button>
+      `;
+      item.querySelector("button").addEventListener("click", () => {
+        selectedSkinId = ownedSkin.id;
         selectedBall = rarity;
         saveProgress();
-      }
-    });
-    inventoryList.appendChild(item);
+      });
+      inventoryList.appendChild(item);
+    }
   }
 
   shopList.innerHTML = "";
@@ -193,15 +293,43 @@ function setMenuMode(mode) {
 }
 
 function openBallCase() {
-  if (coins < 150) {
+  if (coins < 150 || caseAnimating) {
     return;
   }
 
   coins -= 150;
-  const rarity = getWeightedRareBall();
-  inventory[rarity] = (inventory[rarity] || 0) + 1;
-  selectedBall = rarity;
+  const reward = rollSkin();
+  ownedSkins.push(reward);
   saveProgress();
+
+  const caseOpening = document.getElementById("caseOpening");
+  const caseReel = document.getElementById("caseReel");
+  const reelTrack = document.getElementById("caseReelTrack");
+  const caseStatus = document.getElementById("caseStatus");
+  const caseResult = document.getElementById("caseResult");
+  const continueButton = document.getElementById("caseContinueButton");
+  const closeButton = document.getElementById("closeCaseButton");
+  const winningIndex = 28;
+  const reelSkins = Array.from({ length: 36 }, (_, index) => index === winningIndex ? reward : rollSkin());
+
+  reelTrack.replaceChildren(...reelSkins.map(createReelCard));
+  reelTrack.style.transition = "none";
+  reelTrack.style.transform = "translateX(0)";
+  caseStatus.textContent = "CASE OPENING...";
+  caseResult.hidden = true;
+  continueButton.hidden = true;
+  closeButton.disabled = true;
+  caseOpening.classList.add("active");
+  caseOpening.setAttribute("aria-hidden", "false");
+  caseAnimating = true;
+
+  requestAnimationFrame(() => {
+    const target = reelTrack.children[winningIndex];
+    const offset = target.offsetLeft + target.offsetWidth / 2 - caseReel.clientWidth / 2;
+    reelTrack.style.transition = "transform 5.4s cubic-bezier(0.08, 0.72, 0.08, 1)";
+    reelTrack.style.transform = `translateX(-${offset}px)`;
+  });
+  window.setTimeout(() => finishCaseOpening(reward), 5500);
 }
 
 function grantLastGameReward() {
@@ -253,6 +381,8 @@ function bindMenuControls() {
   const inventoryButton = document.getElementById("inventoryButton");
   const shopButton = document.getElementById("shopButton");
   const openCaseButton = document.getElementById("openCaseButton");
+  const closeCaseButton = document.getElementById("closeCaseButton");
+  const caseContinueButton = document.getElementById("caseContinueButton");
 
   if (startButton) {
     startButton.addEventListener("click", startGame);
@@ -265,6 +395,12 @@ function bindMenuControls() {
   }
   if (openCaseButton) {
     openCaseButton.addEventListener("click", openBallCase);
+  }
+  if (closeCaseButton) {
+    closeCaseButton.addEventListener("click", closeCaseOpening);
+  }
+  if (caseContinueButton) {
+    caseContinueButton.addEventListener("click", closeCaseOpening);
   }
 }
 
