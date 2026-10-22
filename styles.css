@@ -142,6 +142,8 @@ h1 {
 
 .menu-panel {
   width: min(94%, 430px);
+  max-height: 100%;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -594,9 +596,38 @@ kbd {
   font: 700 12px "Space Mono", "Courier New", monospace;
 }
 
+.wide-key {
+  width: 52px;
+  font-size: 9px;
+}
+
 .control-divider {
   margin: 0 3px;
   color: #607388;
+}
+
+.touch-move-controls {
+  display: flex;
+  gap: 6px;
+  margin-left: 6px;
+}
+
+.touch-move-controls button {
+  width: 34px;
+  height: 32px;
+  border: 1px solid #3b4b5d;
+  border-bottom-width: 2px;
+  background: #131e2c;
+  color: #eff8ff;
+  font: 700 18px "Space Mono", monospace;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.touch-move-controls button:active {
+  border-color: var(--cyan);
+  background: #1a2b3c;
+  color: var(--cyan);
 }
 
 .strip-spacer {
@@ -634,6 +665,11 @@ kbd {
 
   .control-strip {
     gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .touch-move-controls {
+    margin-left: auto;
   }
 
   .case-dialog {

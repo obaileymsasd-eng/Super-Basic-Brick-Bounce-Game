@@ -38,13 +38,35 @@ const ball = {
   vx: 0,
   vy: 0
 };
+let ballLaunched = false;
 
-// Put the ball in the center and reset its speed and direction.
+// Place the ball above the paddle and wait for the player's aim.
 function resetBall() {
-  ball.x = WIDTH / 2 - ball.width / 2;
-  ball.y = HEIGHT / 2 - ball.height / 2;
-  ball.vx = BALL_SPEED;  // right
-  ball.vy = BALL_SPEED;  // down
+  ball.x = paddle.x + paddle.width / 2 - ball.width / 2;
+  ball.y = paddle.y - ball.height;
+  ball.vx = 0;
+  ball.vy = 0;
+  ballLaunched = false;
+}
+
+function launchBall() {
+  if (gameState !== "playing" || ballLaunched) {
+    return;
+  }
+
+  const startX = paddle.x + paddle.width / 2;
+  const startY = paddle.y;
+  const targetX = mouseX;
+  const targetY = Math.min(mouseY, startY - 40);
+  const directionX = targetX - startX;
+  const directionY = targetY - startY;
+  const distance = Math.hypot(directionX, directionY) || 1;
+
+  ball.x = startX - ball.width / 2;
+  ball.y = startY - ball.height;
+  ball.vx = directionX / distance * BALL_SPEED;
+  ball.vy = directionY / distance * BALL_SPEED;
+  ballLaunched = true;
 }
 
 
@@ -441,6 +463,10 @@ let mouseY = HEIGHT / 2;
 
 document.addEventListener("keydown", function (event) {
   keys[event.key.toLowerCase()] = true;
+  if (event.code === "Space") {
+    event.preventDefault();
+    launchBall();
+  }
   // Stop the arrow keys from scrolling the page.
   if (event.key.startsWith("Arrow")) {
     event.preventDefault();
@@ -458,7 +484,7 @@ function updateMousePosition(event) {
   mouseY = (event.clientY - bounds.top) * HEIGHT / bounds.height;
 }
 
-canvas.addEventListener("mousemove", updateMousePosition);
+canvas.addEventListener("pointermove", updateMousePosition);
 canvas.addEventListener("click", function (event) {
   updateMousePosition(event);
   if (gameState === "playing" && confirmState === "normal" && aimCharges > 0) {
@@ -513,6 +539,12 @@ function update() {
   checkRestart();   // R once = ask, R again = restart
 
   movePaddle();
+  if (!ballLaunched) {
+    ball.x = paddle.x + paddle.width / 2 - ball.width / 2;
+    ball.y = paddle.y - ball.height;
+    return;
+  }
+
   moveBall();
 
   bounceOffWalls();   // collisions.js
@@ -561,6 +593,24 @@ function clampPaddle() {
   if (paddle.x + paddle.width > WIDTH) {
     paddle.x = WIDTH - paddle.width;
   }
+}
+
+function bindPaddleControls() {
+  document.querySelectorAll("[data-paddle-direction]").forEach((button) => {
+    const key = button.dataset.paddleDirection === "left" ? "arrowleft" : "arrowright";
+    const stopMoving = () => {
+      keys[key] = false;
+    };
+
+    button.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      keys[key] = true;
+      button.setPointerCapture(event.pointerId);
+    });
+    button.addEventListener("pointerup", stopMoving);
+    button.addEventListener("pointercancel", stopMoving);
+    button.addEventListener("lostpointercapture", stopMoving);
+  });
 }
 
 function setPaddleWidth(width) {
@@ -806,6 +856,48 @@ function drawProjectiles() {
   ctx.restore();
 }
 
+function drawLaunchAim() {
+  if (gameState !== "playing" || ballLaunched) {
+    return;
+  }
+
+  const startX = paddle.x + paddle.width / 2;
+  const startY = paddle.y - 4;
+  const targetX = mouseX;
+  const targetY = Math.min(mouseY, startY - 40);
+  const angle = Math.atan2(targetY - startY, targetX - startX);
+  const endX = startX + Math.cos(angle) * 70;
+  const endY = startY + Math.sin(angle) * 70;
+
+  ctx.save();
+  ctx.setLineDash([5, 5]);
+  ctx.strokeStyle = "rgba(215, 255, 71, 0.8)";
+  ctx.fillStyle = "#d7ff47";
+  ctx.shadowColor = "#d7ff47";
+  ctx.shadowBlur = 12;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(startX, startY);
+  ctx.lineTo(endX, endY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.translate(endX, endY);
+  ctx.rotate(angle);
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(-9, -5);
+  ctx.lineTo(-9, 5);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "bottom";
+  ctx.font = "700 11px 'Space Mono', monospace";
+  ctx.fillText("AIM WITH POINTER  //  PRESS SPACE TO LAUNCH", WIDTH / 2, HEIGHT - 48);
+  ctx.restore();
+}
+
 function drawAimArrow() {
   if (aimCharges === 0) {
     return;
@@ -849,6 +941,7 @@ function draw() {
   drawProjectiles();
   drawPaddle();
   drawBall();
+  drawLaunchAim();
   drawAimArrow();
 
   ctx.save();
@@ -956,6 +1049,7 @@ function frame(now) {
 function start() {
   loadProgress();
   bindMenuControls();
+  bindPaddleControls();
   renderInventory();
   saveProgress();
   showMenu();
