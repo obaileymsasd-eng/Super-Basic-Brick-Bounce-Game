@@ -502,18 +502,8 @@ function checkRestart() {
     }  
   } else if (confirmState === "confirming") {  
     if (rJustPressed) {  
-      bricks = makeBricks();   // rebuild the wall  
-      resetBall();
-            score = 0;   // a fresh game starts at zero
-            combo = 1;   // a fresh game starts at 1x  
-        lives = MAX_LIVES;
-          fallingPowerUps = [];
-          projectiles = [];
-          aimCharges = 0;
-          comboProtectionTime = 0;
-          widePaddleTime = 0;
-          setPaddleWidth(PADDLE_BASE_WIDTH);
-            gameState = "playing";   // leave the won state on restart    
+      resetGameRound();
+      gameState = "playing";
       confirmState = "normal";  
     }  
   }  
@@ -533,6 +523,7 @@ function update() {
 
   if (gameState === "won" || gameState === "lost") {
     grantLastGameReward();
+    checkRestart();
     return;
   }
 
