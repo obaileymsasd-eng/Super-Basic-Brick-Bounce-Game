@@ -437,11 +437,13 @@ let bricks = [];
 // keys["arrowleft"] is true while the left arrow is held down.
 // ------------------------------------------------------------
 const keys = {};
-// --- RESTART CONFIRMATION ---------------------------------------------  
-// Two states: "normal" and "confirming". Pressing R once asks the  
-// question; pressing R again while confirming restarts.  
-let confirmState = "normal";  
+// --- COMMAND CONFIRMATION ----------------------------------------------
+const COMMAND_PROMPT_DURATION = 4000;
+let pendingCommand = null;
+let commandPromptExpiresAt = 0;
+let commandPromptDismissed = false;
 let rWasDown = false;
+let mWasDown = false;
 let lives = MAX_LIVES;
 // --- SCORE -------------------------------------------------------------  
 // A singleton: there is only one score, and every file shares it.  
@@ -487,29 +489,43 @@ function updateMousePosition(event) {
 canvas.addEventListener("pointermove", updateMousePosition);
 canvas.addEventListener("click", function (event) {
   updateMousePosition(event);
-  if (gameState === "playing" && confirmState === "normal" && aimCharges > 0) {
+  if (gameState === "playing" && pendingCommand === null && aimCharges > 0) {
     fireProjectile();
   }
 });
 
-// Press R once: show the question. Press R again: restart for real.  
-function checkRestart() {  
-  const rJustPressed = keys["r"] && !rWasDown;  
-  
-  if (confirmState === "normal") {  
-    if (rJustPressed) {  
-      confirmState = "confirming";  
-    }  
-  } else if (confirmState === "confirming") {  
-    if (rJustPressed) {  
+function checkCommands() {
+  const now = performance.now();
+  const rJustPressed = keys["r"] && !rWasDown;
+  const mJustPressed = keys["m"] && !mWasDown;
+
+  if (pendingCommand !== null && now >= commandPromptExpiresAt) {
+    pendingCommand = null;
+    commandPromptDismissed = true;
+  }
+
+  if (pendingCommand === "restart" && rJustPressed) {
       resetGameRound();
       gameState = "playing";
-      confirmState = "normal";  
-    }  
-  }  
-  
-  rWasDown = keys["r"];  
-}  
+      pendingCommand = null;
+  } else if (pendingCommand === "menu" && mJustPressed) {
+    pendingCommand = null;
+    showMenu();
+  } else if (pendingCommand === null) {
+    if (rJustPressed) {
+      pendingCommand = "restart";
+      commandPromptExpiresAt = now + COMMAND_PROMPT_DURATION;
+      commandPromptDismissed = false;
+    } else if (mJustPressed) {
+      pendingCommand = "menu";
+      commandPromptExpiresAt = now + COMMAND_PROMPT_DURATION;
+      commandPromptDismissed = false;
+    }
+  }
+
+  rWasDown = keys["r"];
+  mWasDown = keys["m"];
+}
 
 
 // ------------------------------------------------------------
@@ -521,13 +537,15 @@ function update() {
     return;
   }
 
-  if (gameState === "won" || gameState === "lost") {
-    grantLastGameReward();
-    checkRestart();
+  checkCommands();
+  if (gameState === "menu") {
     return;
   }
 
-  checkRestart();   // R once = ask, R again = restart
+  if (gameState === "won" || gameState === "lost") {
+    grantLastGameReward();
+    return;
+  }
 
   movePaddle();
   if (!ballLaunched) {
@@ -980,7 +998,7 @@ function draw() {
   }
   ctx.restore();
 
-  if (gameState === "won" || gameState === "lost" || confirmState === "confirming") {
+  if (gameState === "won" || gameState === "lost" || pendingCommand !== null) {
     ctx.fillStyle = "rgba(5, 10, 20, 0.78)";
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
     ctx.textAlign = "center";
@@ -989,18 +1007,24 @@ function draw() {
     ctx.shadowColor = gameState === "won" ? "#39f5ff" : "#ff477e";
     ctx.fillStyle = gameState === "won" ? "#39f5ff" : "#ff477e";
     ctx.font = "700 28px 'Orbitron', monospace";
-    const title = confirmState === "confirming"
+    const title = pendingCommand === "restart"
       ? "RESTART?"
+      : pendingCommand === "menu"
+        ? "RETURN TO MENU?"
       : gameState === "won" ? "SYSTEM CLEARED" : "GAME OVER";
     ctx.fillText(title, WIDTH / 2, HEIGHT / 2 - 18);
     ctx.shadowBlur = 0;
     ctx.fillStyle = "#e7f2ff";
     ctx.font = "12px 'Space Mono', monospace";
-    const prompt = confirmState === "confirming"
+    const prompt = pendingCommand === "restart"
       ? "PRESS R AGAIN TO CONFIRM"
-      : gameState === "won"
-        ? "PRESS R, THEN R AGAIN TO PLAY AGAIN"
-        : "PRESS R, THEN R AGAIN TO RESTART";
+      : pendingCommand === "menu"
+        ? "PRESS M AGAIN TO CONFIRM"
+        : commandPromptDismissed
+          ? ""
+          : gameState === "won"
+          ? "PRESS R, THEN R AGAIN TO PLAY AGAIN"
+          : "PRESS R, THEN R AGAIN TO RESTART";
     ctx.fillText(prompt, WIDTH / 2, HEIGHT / 2 + 20);
     ctx.textAlign = "left";
     ctx.textBaseline = "alphabetic";
