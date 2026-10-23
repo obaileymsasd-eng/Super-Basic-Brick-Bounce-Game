@@ -574,14 +574,26 @@ canvas {
 .control-strip {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   min-height: 48px;
   margin-top: 14px;
   padding: 0 4px;
 }
 
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .control-label {
   color: var(--muted);
+}
+
+.control-count {
+  color: var(--muted);
+  font: 9px "Space Mono", "Courier New", monospace;
 }
 
 kbd {
@@ -669,6 +681,7 @@ kbd {
   }
 
   .touch-move-controls {
+    display: flex;
     margin-left: auto;
   }
 

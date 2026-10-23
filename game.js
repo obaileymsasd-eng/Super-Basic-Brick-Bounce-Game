@@ -366,6 +366,7 @@ function grantLastGameReward() {
 }
 
 function resetGameRound() {
+  isPaused = false;
   score = 0;
   combo = 1;
   lives = MAX_LIVES;
@@ -382,6 +383,7 @@ function resetGameRound() {
 
 function startGame() {
   resetGameRound();
+  isPaused = false;
   gameState = "playing";
   const menuOverlay = document.getElementById("menuOverlay");
   if (menuOverlay) {
@@ -390,6 +392,7 @@ function startGame() {
 }
 
 function showMenu() {
+  isPaused = false;
   gameState = "menu";
   const menuOverlay = document.getElementById("menuOverlay");
   if (menuOverlay) {
@@ -442,8 +445,10 @@ const COMMAND_PROMPT_DURATION = 4000;
 let pendingCommand = null;
 let commandPromptExpiresAt = 0;
 let commandPromptDismissed = false;
+let isPaused = false;
 let rWasDown = false;
 let mWasDown = false;
+let pWasDown = false;
 let lives = MAX_LIVES;
 // --- SCORE -------------------------------------------------------------  
 // A singleton: there is only one score, and every file shares it.  
@@ -467,7 +472,9 @@ document.addEventListener("keydown", function (event) {
   keys[event.key.toLowerCase()] = true;
   if (event.code === "Space") {
     event.preventDefault();
-    launchBall();
+    if (!isPaused) {
+      launchBall();
+    }
   }
   // Stop the arrow keys from scrolling the page.
   if (event.key.startsWith("Arrow")) {
@@ -498,6 +505,11 @@ function checkCommands() {
   const now = performance.now();
   const rJustPressed = keys["r"] && !rWasDown;
   const mJustPressed = keys["m"] && !mWasDown;
+  const pJustPressed = keys["p"] && !pWasDown;
+
+  if (pJustPressed && (gameState === "playing" || isPaused) && (pendingCommand === null || isPaused)) {
+    isPaused = !isPaused;
+  }
 
   if (pendingCommand !== null && now >= commandPromptExpiresAt) {
     pendingCommand = null;
@@ -525,6 +537,7 @@ function checkCommands() {
 
   rWasDown = keys["r"];
   mWasDown = keys["m"];
+  pWasDown = keys["p"];
 }
 
 
@@ -538,7 +551,7 @@ function update() {
   }
 
   checkCommands();
-  if (gameState === "menu") {
+  if (gameState === "menu" || isPaused) {
     return;
   }
 
@@ -998,20 +1011,23 @@ function draw() {
   }
   ctx.restore();
 
-  if (gameState === "won" || gameState === "lost" || pendingCommand !== null) {
+  if (gameState === "won" || gameState === "lost" || pendingCommand !== null || isPaused) {
     ctx.fillStyle = "rgba(5, 10, 20, 0.78)";
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.shadowBlur = 18;
-    ctx.shadowColor = gameState === "won" ? "#39f5ff" : "#ff477e";
-    ctx.fillStyle = gameState === "won" ? "#39f5ff" : "#ff477e";
+    const overlayColor = isPaused || gameState === "won" ? "#39f5ff" : "#ff477e";
+    ctx.shadowColor = overlayColor;
+    ctx.fillStyle = overlayColor;
     ctx.font = "700 28px 'Orbitron', monospace";
     const title = pendingCommand === "restart"
       ? "RESTART?"
       : pendingCommand === "menu"
         ? "RETURN TO MENU?"
-      : gameState === "won" ? "SYSTEM CLEARED" : "GAME OVER";
+        : isPaused
+          ? "PAUSED"
+          : gameState === "won" ? "SYSTEM CLEARED" : "GAME OVER";
     ctx.fillText(title, WIDTH / 2, HEIGHT / 2 - 18);
     ctx.shadowBlur = 0;
     ctx.fillStyle = "#e7f2ff";
@@ -1020,6 +1036,8 @@ function draw() {
       ? "PRESS R AGAIN TO CONFIRM"
       : pendingCommand === "menu"
         ? "PRESS M AGAIN TO CONFIRM"
+        : isPaused
+          ? "PRESS P TO RESUME"
         : commandPromptDismissed
           ? ""
           : gameState === "won"
