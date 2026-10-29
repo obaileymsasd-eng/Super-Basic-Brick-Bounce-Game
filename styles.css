@@ -252,6 +252,8 @@ h1 {
 .shop-list {
   display: grid;
   gap: 8px;
+  max-height: 192px;
+  overflow-y: auto;
 }
 
 .inventory-item,
@@ -296,6 +298,41 @@ h1 {
   font-size: 10px;
 }
 
+.inventory-actions,
+.market-prices {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.market-prices {
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.market-prices small {
+  white-space: nowrap;
+}
+
+.market-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 15px 0 8px;
+}
+
+.market-heading h3 {
+  margin: 0;
+}
+
+.market-timer {
+  color: var(--acid);
+  font-size: 9px;
+  white-space: nowrap;
+}
+
 .inventory-item span,
 .shop-item small {
   color: var(--muted);
@@ -320,6 +357,12 @@ h1 {
   padding: 8px 12px;
   font-size: 11px;
   letter-spacing: 0.1em;
+}
+
+.inventory-actions .buy-button,
+.market-prices .buy-button {
+  padding: 6px 8px;
+  font-size: 9px;
 }
 
 .case-opening {
@@ -696,6 +739,20 @@ kbd {
 
   .case-result {
     flex-wrap: wrap;
+  }
+
+  .inventory-item {
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .inventory-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .market-prices small {
+    font-size: 8px;
   }
 
   .control-label,

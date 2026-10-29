@@ -96,6 +96,14 @@ const WEAR_CONDITIONS = [
   { label: "Well-Worn", max: 0.45 },
   { label: "Battle-Scarred", max: 1 }
 ];
+const MARKET_REFRESH_MS = 30000;
+const MARKET_BASE_PRICES = {
+  common: 150,
+  uncommon: 250,
+  rare: 400,
+  epic: 700,
+  legendary: 1200
+};
 
 const SAVE_KEY = "neonBreakProgress";
 let menuMode = "inventory";
@@ -114,6 +122,10 @@ let ownedSkins = [{ id: "starter-common", rarity: "common", condition: "Factory 
 let selectedSkinId = "starter-common";
 let caseAnimating = false;
 let lastGameRewardGranted = false;
+let marketOffers = [];
+let marketPriceFactors = Object.fromEntries(RARITY_ORDER.map((rarity) => [rarity, 1]));
+let nextMarketRefreshAt = 0;
+let nextMarketClockUpdateAt = 0;
 
 function loadProgress() {
   try {
@@ -205,6 +217,121 @@ function rollSkin() {
   };
 }
 
+function getWearCondition(float) {
+  return WEAR_CONDITIONS.find((wear) => float <= wear.max)?.label || "Battle-Scarred";
+}
+
+function getMarketValue(skin) {
+  const floatFactor = 1.2 - skin.float * 0.4;
+  const marketFactor = marketPriceFactors[skin.rarity] || 1;
+  return Math.max(1, Math.round(MARKET_BASE_PRICES[skin.rarity] * floatFactor * marketFactor));
+}
+
+function refreshMarket() {
+  marketPriceFactors = Object.fromEntries(RARITY_ORDER.map((rarity) => [
+    rarity,
+    0.85 + Math.random() * 0.3
+  ]));
+  marketOffers = Array.from({ length: 6 }, () => {
+    const float = Math.random();
+    return {
+      id: `market-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      rarity: getWeightedRareBall(),
+      condition: getWearCondition(float),
+      float
+    };
+  });
+  nextMarketRefreshAt = Date.now() + MARKET_REFRESH_MS;
+  nextMarketClockUpdateAt = 0;
+  renderInventory();
+}
+
+function renderMarket() {
+  const marketList = document.getElementById("marketList");
+  if (!marketList) {
+    return;
+  }
+
+  marketList.replaceChildren();
+  for (const offer of marketOffers) {
+    const skin = RARITY_INFO[offer.rarity];
+    const sellPrice = getMarketValue(offer);
+    const buyPrice = Math.ceil(sellPrice * 1.25);
+    const row = document.createElement("div");
+    row.className = "inventory-item market-item";
+    row.innerHTML = `
+      <div>
+        <span class="rarity-tag ${offer.rarity}">${skin.label}</span>
+        <strong class="skin-name">${skin.skin}</strong>
+        <small>${offer.condition} | Float ${offer.float.toFixed(4)}</small>
+      </div>
+      <div class="market-prices">
+        <small>SELL ${sellPrice} | BUY ${buyPrice}</small>
+        <button class="buy-button" ${coins < buyPrice ? "disabled" : ""}>BUY</button>
+      </div>
+    `;
+    row.querySelector("button").addEventListener("click", () => buyMarketOffer(offer.id));
+    marketList.appendChild(row);
+  }
+  updateMarketClock();
+}
+
+function updateMarketClock() {
+  const marketTimer = document.getElementById("marketTimer");
+  if (!marketTimer) {
+    return;
+  }
+  const seconds = Math.max(0, Math.ceil((nextMarketRefreshAt - Date.now()) / 1000));
+  marketTimer.textContent = `PRICE SHIFT IN 00:${String(seconds).padStart(2, "0")}`;
+}
+
+function updateMarket() {
+  const now = Date.now();
+  if (now >= nextMarketRefreshAt) {
+    refreshMarket();
+    return;
+  }
+  if (now >= nextMarketClockUpdateAt) {
+    updateMarketClock();
+    nextMarketClockUpdateAt = now + 1000;
+  }
+}
+
+function sellSkin(skinId) {
+  if (ownedSkins.length <= 1) {
+    return;
+  }
+  const skinIndex = ownedSkins.findIndex((skin) => skin.id === skinId);
+  if (skinIndex === -1) {
+    return;
+  }
+
+  const [skin] = ownedSkins.splice(skinIndex, 1);
+  coins += getMarketValue(skin);
+  if (selectedSkinId === skin.id) {
+    selectedSkinId = ownedSkins[0].id;
+    selectedBall = ownedSkins[0].rarity;
+  }
+  saveProgress();
+}
+
+function buyMarketOffer(offerId) {
+  const offerIndex = marketOffers.findIndex((offer) => offer.id === offerId);
+  if (offerIndex === -1) {
+    return;
+  }
+  const offer = marketOffers[offerIndex];
+  const buyPrice = Math.ceil(getMarketValue(offer) * 1.25);
+  if (coins < buyPrice) {
+    return;
+  }
+
+  coins -= buyPrice;
+  ownedSkins.push({ ...offer, id: `skin-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` });
+  marketOffers.splice(offerIndex, 1);
+  saveProgress();
+}
+
 function createReelCard(skin) {
   const info = RARITY_INFO[skin.rarity];
   const card = document.createElement("div");
@@ -250,9 +377,9 @@ function closeCaseOpening() {
 
 function renderInventory() {
   const inventoryList = document.getElementById("inventoryList");
-  const shopList = document.getElementById("shopList");
+  const marketList = document.getElementById("marketList");
 
-  if (!inventoryList || !shopList) {
+  if (!inventoryList || !marketList) {
     return;
   }
 
@@ -270,34 +397,26 @@ function renderInventory() {
           <strong class="skin-name">${skin.skin}</strong>
           <small>${ownedSkin.condition} | Float ${ownedSkin.float.toFixed(4)}</small>
         </div>
-        <button class="buy-button" ${selectedSkinId === ownedSkin.id ? "disabled" : ""}>
-          ${selectedSkinId === ownedSkin.id ? "EQUIPPED" : "EQUIP"}
-        </button>
+        <div class="inventory-actions">
+          <button class="buy-button equip-button" ${selectedSkinId === ownedSkin.id ? "disabled" : ""}>
+            ${selectedSkinId === ownedSkin.id ? "EQUIPPED" : "EQUIP"}
+          </button>
+          <button class="buy-button sell-button" ${ownedSkins.length <= 1 ? "disabled" : ""}>
+            SELL ${getMarketValue(ownedSkin)}
+          </button>
+        </div>
       `;
-      item.querySelector("button").addEventListener("click", () => {
+      item.querySelector(".equip-button").addEventListener("click", () => {
         selectedSkinId = ownedSkin.id;
         selectedBall = rarity;
         saveProgress();
       });
+      item.querySelector(".sell-button").addEventListener("click", () => sellSkin(ownedSkin.id));
       inventoryList.appendChild(item);
     }
   }
 
-  shopList.innerHTML = "";
-  for (const rarity of RARITY_ORDER) {
-    const skin = RARITY_INFO[rarity];
-    const row = document.createElement("div");
-    row.className = "inventory-item";
-    row.innerHTML = `
-      <div>
-        <span class="rarity-tag ${rarity}">${skin.label}</span>
-        <br>
-        <strong class="skin-name">${skin.skin}</strong>
-      </div>
-      <small>${skin.weight}% drop | ${inventory[rarity] || 0} owned</small>
-    `;
-    shopList.appendChild(row);
-  }
+  renderMarket();
 
   const openCaseButton = document.getElementById("openCaseButton");
   if (openCaseButton) {
@@ -372,6 +491,7 @@ function resetGameRound() {
   lives = MAX_LIVES;
   fallingPowerUps = [];
   projectiles = [];
+  explosions = [];
   aimCharges = 0;
   comboProtectionTime = 0;
   widePaddleTime = 0;
@@ -433,6 +553,7 @@ function bindMenuControls() {
 // THE BRICKS (the list is filled in by makeBricks() in bricks.js)
 // ------------------------------------------------------------
 let bricks = [];
+let explosions = [];
 
 
 // ------------------------------------------------------------
@@ -546,6 +667,7 @@ function checkCommands() {
 // what they touched.
 // ------------------------------------------------------------
 function update() {
+  updateMarket();
   if (gameState === "menu") {
     return;
   }
@@ -574,6 +696,7 @@ function update() {
   bounceOffBricks();  // collisions.js
   updatePowerUps();
   updateProjectiles();
+  updateBrickEffects();
   updatePowerUpTimers();
     // if every brick is gone, the player has won  
   if (bricks.length === 0 && gameState === "playing") {  
@@ -720,7 +843,7 @@ function updateProjectiles() {
         projectile.y + projectile.radius > brick.y &&
         projectile.y - projectile.radius < brick.y + brick.height
       ) {
-        breakBrick(brick);
+        hitBrick(brick);
         projectiles.splice(shotIndex, 1);
         break;
       }
@@ -959,6 +1082,7 @@ function drawAimArrow() {
 function draw() {
   drawArena();
   drawBricks();
+  drawBrickEffects();
   drawPowerUps();
   drawProjectiles();
   drawPaddle();
@@ -1083,6 +1207,7 @@ function start() {
   loadProgress();
   bindMenuControls();
   bindPaddleControls();
+  refreshMarket();
   renderInventory();
   saveProgress();
   showMenu();

@@ -50,7 +50,7 @@ function bounceOffPaddle() {
   }
 }
 
-function breakBrick(brick) {
+function destroyBrick(brick) {
   const index = bricks.indexOf(brick);
   if (index === -1) {
     return;
@@ -60,6 +60,64 @@ function breakBrick(brick) {
   score = score + 10 * combo;
   combo = combo + 0.5;
   spawnPowerUp(brick);
+}
+
+function hitBrick(brick) {
+  if (!bricks.includes(brick)) {
+    return;
+  }
+
+  if (brick.type === "tnt") {
+    if (brick.fuseRemaining === 0) {
+      brick.fuseRemaining = TNT_FUSE_SECONDS;
+    }
+    return;
+  }
+
+  brick.hitsRemaining--;
+  if (brick.hitsRemaining <= 0) {
+    destroyBrick(brick);
+  }
+}
+
+function detonateTnt(brick) {
+  if (!bricks.includes(brick)) {
+    return;
+  }
+
+  const neighbors = bricks.filter((candidate) => candidate !== brick &&
+    Math.abs(candidate.row - brick.row) <= 1 && Math.abs(candidate.col - brick.col) <= 1);
+  explosions.push({
+    x: brick.x + brick.width / 2,
+    y: brick.y + brick.height / 2,
+    age: 0,
+    duration: 0.42,
+    radius: Math.hypot(BRICK_WIDTH + BRICK_GAP, BRICK_HEIGHT + BRICK_GAP) * 1.1
+  });
+
+  destroyBrick(brick);
+  for (const neighbor of neighbors) {
+    destroyBrick(neighbor);
+  }
+}
+
+function updateBrickEffects() {
+  const elapsed = STEP / 1000;
+  for (const brick of [...bricks]) {
+    if (brick.type === "tnt" && brick.fuseRemaining > 0) {
+      brick.fuseRemaining -= elapsed;
+      if (brick.fuseRemaining <= 0) {
+        detonateTnt(brick);
+      }
+    }
+  }
+
+  for (let index = explosions.length - 1; index >= 0; index--) {
+    explosions[index].age += elapsed;
+    if (explosions[index].age >= explosions[index].duration) {
+      explosions.splice(index, 1);
+    }
+  }
 }
 
 
@@ -91,9 +149,7 @@ function bounceOffBricks() {
         ball.y = brick.y + brick.height;   // below the brick
       }
     }
-    // The ball breaks the brick it bounced off.
-    breakBrick(brick);
-
+    hitBrick(brick);
 
     break;  // bounce off one brick per update, then stop looking
   }
