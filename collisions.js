@@ -40,13 +40,29 @@ function bounceOffWalls() {
 // ball.vy > 0 means "the ball is moving down", so it only bounces
 // when it is falling onto the paddle.
 function bounceOffPaddle() {
-  if (boxesTouch(ball, paddle) && ball.vy > 0) {
-    ball.y = paddle.y - ball.height;  // sit on top of the paddle
-    ball.vy = -ball.vy;
-    if (comboProtectionTime === 0) {
-      combo = 1;
-    }
+  if (!boxesTouch(ball, paddle) || ball.vy <= 0) {
+    return;
+  }
 
+  const ballCenterX = ball.x + ball.width / 2;
+  const paddleCenterX = paddle.x + paddle.width / 2;
+  const hitRatio = Math.max(-1, Math.min(1, (ballCenterX - paddleCenterX) / (paddle.width / 2)));
+  const angle = (hitRatio * 72 * Math.PI) / 180;
+  const speed = Math.hypot(ball.vx, ball.vy) || 5;
+  const horizontalBoost = speed * Math.sin(angle);
+  const verticalBoost = Math.abs(speed * Math.cos(angle));
+
+  ball.y = paddle.y - ball.height;
+  ball.vx = horizontalBoost;
+  ball.vy = -verticalBoost;
+
+  if (Math.abs(hitRatio) > 0.72) {
+    const edgeBoost = (Math.abs(hitRatio) - 0.72) * 1.8;
+    ball.vx *= 1 + edgeBoost;
+  }
+
+  if (comboProtectionTime === 0) {
+    combo = 1;
   }
 }
 

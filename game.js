@@ -1032,9 +1032,54 @@ function drawArena() {
   ctx.restore();
 }
 
+function getSkinWearValue(skin) {
+  const wear = Number(skin?.float ?? 0.03);
+  return Math.max(0, Math.min(1, wear));
+}
+
+function drawWearTexture({ x, y, width, height, wear, tint = "rgba(7, 12, 18, 0.58)", rotation = 0 }) {
+  const scratches = Math.max(4, Math.round(6 + wear * 18));
+  ctx.save();
+  ctx.translate(x + width / 2, y + height / 2);
+  ctx.rotate(rotation);
+  ctx.translate(-(x + width / 2), -(y + height / 2));
+  ctx.lineCap = "round";
+
+  for (let index = 0; index < scratches; index++) {
+    const baseX = x + width * (0.12 + ((index * 0.19) % 0.78));
+    const baseY = y + height * (0.08 + ((index * 0.27) % 0.72));
+    const endX = x + width * (0.78 + ((index % 3) - 1) * 0.12);
+    const endY = y + height * (0.7 + ((index + 1) % 4) * 0.12);
+    ctx.strokeStyle = `rgba(8, 12, 18, ${0.2 + wear * 0.5})`;
+    ctx.lineWidth = 1 + wear * 1.8;
+    ctx.beginPath();
+    ctx.moveTo(baseX, baseY);
+    ctx.lineTo(endX, endY);
+    ctx.stroke();
+  }
+
+  const chipCount = Math.max(1, Math.round(2 + wear * 8));
+  for (let index = 0; index < chipCount; index++) {
+    const chipX = x + width * ((index * 0.23 + 0.15) % 1);
+    const chipY = y + height * ((index * 0.31 + 0.11) % 1);
+    const chipRadius = Math.max(2, width * (0.03 + wear * 0.06));
+    ctx.fillStyle = `rgba(12, 18, 24, ${0.08 + wear * 0.28})`;
+    ctx.beginPath();
+    ctx.arc(chipX, chipY, chipRadius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.strokeStyle = tint;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.rect(x + 2, y + 2, width - 4, height - 4);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawPaddle() {
-  const equippedSkin = ownedSkins.find((skin) => skin.id === selectedPaddleSkinId);
-  const skinInfo = PADDLE_SKIN_INFO[equippedSkin?.rarity || "common"];
+  const equippedSkin = ownedSkins.find((skin) => skin.id === selectedPaddleSkinId) || { rarity: "common", float: 0.03 };
+  const skinInfo = PADDLE_SKIN_INFO[equippedSkin.rarity || "common"];
   const color = skinInfo.color;
   const paddleGradient = ctx.createLinearGradient(paddle.x, 0, paddle.x + paddle.width, 0);
   paddleGradient.addColorStop(0, "#101827");
@@ -1066,11 +1111,21 @@ function drawPaddle() {
     ctx.fillStyle = "rgba(255, 255, 255, 0.78)";
     ctx.fillRect(paddle.x + 8, paddle.y + 2, paddle.width - 16, 2);
   }
+  drawWearTexture({
+    x: paddle.x,
+    y: paddle.y,
+    width: paddle.width,
+    height: paddle.height,
+    wear: getSkinWearValue(equippedSkin),
+    tint: "rgba(14, 20, 28, 0.45)",
+    rotation: -0.28
+  });
   ctx.restore();
 }
 
 function drawBall() {
-  const skin = RARITY_INFO[selectedBall] || RARITY_INFO.common;
+  const equippedSkin = ownedSkins.find((skin) => skin.id === selectedSkinId) || { rarity: selectedBall, float: 0.03 };
+  const skin = { ...RARITY_INFO[equippedSkin.rarity || selectedBall], ...equippedSkin };
   const centerX = ball.x + ball.width / 2;
   const centerY = ball.y + ball.height / 2;
   ctx.save();
@@ -1114,6 +1169,16 @@ function drawBall() {
   } else {
     ctx.fillRect(ball.x, ball.y, ball.width, ball.height);
   }
+
+  drawWearTexture({
+    x: ball.x,
+    y: ball.y,
+    width: ball.width,
+    height: ball.height,
+    wear: getSkinWearValue(equippedSkin),
+    tint: "rgba(15, 23, 32, 0.68)",
+    rotation: 0.9
+  });
   ctx.restore();
 }
 
