@@ -1081,17 +1081,24 @@ function drawPaddle() {
   const equippedSkin = ownedSkins.find((skin) => skin.id === selectedPaddleSkinId) || { rarity: "common", float: 0.03 };
   const skinInfo = PADDLE_SKIN_INFO[equippedSkin.rarity || "common"];
   const color = skinInfo.color;
-  const paddleGradient = ctx.createLinearGradient(paddle.x, 0, paddle.x + paddle.width, 0);
-  paddleGradient.addColorStop(0, "#101827");
-  paddleGradient.addColorStop(0.14, color);
-  paddleGradient.addColorStop(0.86, color);
-  paddleGradient.addColorStop(1, "#f4f8ff");
+  const sideWidth = Math.max(10, paddle.width * 0.18);
 
   ctx.save();
   ctx.shadowColor = color;
   ctx.shadowBlur = 18;
-  ctx.fillStyle = paddleGradient;
+
+  ctx.fillStyle = "#101827";
   ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
+
+  ctx.fillStyle = color;
+  ctx.fillRect(paddle.x + sideWidth, paddle.y, paddle.width - sideWidth * 2, paddle.height);
+
+  ctx.fillStyle = "rgba(255, 136, 164, 0.9)";
+  ctx.fillRect(paddle.x, paddle.y, sideWidth, paddle.height);
+
+  ctx.fillStyle = "rgba(92, 214, 255, 0.8)";
+  ctx.fillRect(paddle.x + paddle.width - sideWidth, paddle.y, sideWidth, paddle.height);
+
   if (["stripes", "gold"].includes(skinInfo.pattern)) {
     ctx.beginPath();
     ctx.rect(paddle.x, paddle.y, paddle.width, paddle.height);
@@ -1111,6 +1118,7 @@ function drawPaddle() {
     ctx.fillStyle = "rgba(255, 255, 255, 0.78)";
     ctx.fillRect(paddle.x + 8, paddle.y + 2, paddle.width - 16, 2);
   }
+
   drawWearTexture({
     x: paddle.x,
     y: paddle.y,
