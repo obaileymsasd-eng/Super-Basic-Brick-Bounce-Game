@@ -89,6 +89,25 @@ const RARITY_INFO = {
   epic: { label: "EPIC", skin: "Prism", color: "#c77dff", shape: "ring", weight: 8 },
   legendary: { label: "LEGENDARY", skin: "Solar Flare", color: "#ffbd59", shape: "star", weight: 2 }
 };
+const PADDLE_SKIN_INFO = {
+  common: { skin: "Arcade Alloy", color: "#39f5ff", pattern: "solid" },
+  uncommon: { skin: "Volt Runner", color: "#7cff9f", pattern: "stripes" },
+  rare: { skin: "Ion Trail", color: "#6a7dff", pattern: "split" },
+  epic: { skin: "Prism Rail", color: "#c77dff", pattern: "glow" },
+  legendary: { skin: "Solar Glide", color: "#ffbd59", pattern: "gold" }
+};
+const CASES = [
+  { id: "static", name: "Static Starter", itemType: "ball", price: 150, odds: { common: 72, uncommon: 20, rare: 6, epic: 1.5, legendary: 0.5 } },
+  { id: "verdant", name: "Verdant Surge", itemType: "ball", price: 300, odds: { common: 12, uncommon: 58, rare: 22, epic: 7, legendary: 1 } },
+  { id: "orbit", name: "Deep Orbit", itemType: "ball", price: 500, odds: { common: 7, uncommon: 15, rare: 55, epic: 18, legendary: 5 } },
+  { id: "prism", name: "Prism Overdrive", itemType: "ball", price: 850, odds: { common: 3, uncommon: 9, rare: 20, epic: 52, legendary: 16 } },
+  { id: "solar", name: "Solar Crown", itemType: "ball", price: 1300, odds: { common: 2, uncommon: 5, rare: 13, epic: 25, legendary: 55 } },
+  { id: "alloy-paddle", name: "Alloy Circuit", itemType: "paddle", price: 150, odds: { common: 72, uncommon: 20, rare: 6, epic: 1.5, legendary: 0.5 } },
+  { id: "volt-paddle", name: "Volt Circuit", itemType: "paddle", price: 300, odds: { common: 12, uncommon: 58, rare: 22, epic: 7, legendary: 1 } },
+  { id: "ion-paddle", name: "Ion Circuit", itemType: "paddle", price: 500, odds: { common: 7, uncommon: 15, rare: 55, epic: 18, legendary: 5 } },
+  { id: "prism-paddle", name: "Prism Circuit", itemType: "paddle", price: 850, odds: { common: 3, uncommon: 9, rare: 20, epic: 52, legendary: 16 } },
+  { id: "solar-paddle", name: "Solar Circuit", itemType: "paddle", price: 1300, odds: { common: 2, uncommon: 5, rare: 13, epic: 25, legendary: 55 } }
+];
 const WEAR_CONDITIONS = [
   { label: "Factory New", max: 0.07 },
   { label: "Minimal Wear", max: 0.15 },
@@ -97,7 +116,13 @@ const WEAR_CONDITIONS = [
   { label: "Battle-Scarred", max: 1 }
 ];
 const MARKET_REFRESH_MS = 30000;
-const MARKET_BASE_PRICES = {
+const BALL_MARKET_BASE_PRICES = {
+  common: 20,
+  uncommon: 45,
+  rare: 150,
+  epic: 450
+};
+const PADDLE_MARKET_BASE_PRICES = {
   common: 150,
   uncommon: 250,
   rare: 400,
@@ -118,8 +143,13 @@ let inventory = {
   epic: 0,
   legendary: 0
 };
-let ownedSkins = [{ id: "starter-common", rarity: "common", condition: "Factory New", float: 0.03 }];
+let ownedSkins = [
+  { id: "starter-common", type: "ball", rarity: "common", condition: "Factory New", float: 0.03 },
+  { id: "starter-paddle", type: "paddle", rarity: "common", condition: "Factory New", float: 0.03 }
+];
 let selectedSkinId = "starter-common";
+let selectedPaddleSkinId = "starter-paddle";
+let inventoryType = "ball";
 let caseAnimating = false;
 let lastGameRewardGranted = false;
 let marketOffers = [];
@@ -136,6 +166,7 @@ function loadProgress() {
         skin && RARITY_INFO[skin.rarity] && typeof skin.id === "string"
       ).map((skin) => ({
         id: skin.id,
+        type: skin.type === "paddle" ? "paddle" : "ball",
         rarity: skin.rarity,
         condition: WEAR_CONDITIONS.find((condition) => condition.label === skin.condition)?.label || "Factory New",
         float: Math.max(0, Math.min(1, Number(skin.float) || 0))
@@ -148,6 +179,7 @@ function loadProgress() {
         for (let index = 0; index < count; index++) {
           ownedSkins.push({
             id: `legacy-${rarity}-${index}`,
+            type: "ball",
             rarity,
             condition: "Factory New",
             float: 0.03
@@ -156,20 +188,35 @@ function loadProgress() {
       }
     }
 
+    if (!ownedSkins.some((skin) => skin.type === "ball")) {
+      ownedSkins.push({ id: "starter-common", type: "ball", rarity: "common", condition: "Factory New", float: 0.03 });
+    }
+    if (!ownedSkins.some((skin) => skin.type === "paddle")) {
+      ownedSkins.push({ id: "starter-paddle", type: "paddle", rarity: "common", condition: "Factory New", float: 0.03 });
+    }
+
     inventory = Object.fromEntries(RARITY_ORDER.map((rarity) => [
       rarity,
       ownedSkins.filter((skin) => skin.rarity === rarity).length
     ]));
     const savedSelection = ownedSkins.find((skin) => skin.id === saved.selectedSkinId);
-    const fallbackSelection = ownedSkins.find((skin) => skin.rarity === saved.selectedBall) || ownedSkins[0];
-    selectedSkinId = (savedSelection || fallbackSelection)?.id || "";
-    selectedBall = (savedSelection || fallbackSelection)?.rarity || "common";
+    const fallbackSelection = ownedSkins.find((skin) => skin.type === "ball" && skin.rarity === saved.selectedBall) ||
+      ownedSkins.find((skin) => skin.type === "ball");
+    const savedBallSelection = savedSelection?.type === "ball" ? savedSelection : fallbackSelection;
+    selectedSkinId = savedBallSelection?.id || ownedSkins.find((skin) => skin.type === "ball")?.id || "";
+    selectedBall = savedBallSelection?.rarity || "common";
+    selectedPaddleSkinId = ownedSkins.find((skin) => skin.id === saved.selectedPaddleSkinId && skin.type === "paddle")?.id ||
+      ownedSkins.find((skin) => skin.type === "paddle")?.id || "";
   } catch (error) {
     coins = 0;
     selectedBall = "common";
     inventory = { common: 1, uncommon: 0, rare: 0, epic: 0, legendary: 0 };
-    ownedSkins = [{ id: "starter-common", rarity: "common", condition: "Factory New", float: 0.03 }];
+    ownedSkins = [
+      { id: "starter-common", type: "ball", rarity: "common", condition: "Factory New", float: 0.03 },
+      { id: "starter-paddle", type: "paddle", rarity: "common", condition: "Factory New", float: 0.03 }
+    ];
     selectedSkinId = "starter-common";
+    selectedPaddleSkinId = "starter-paddle";
   }
 }
 
@@ -182,6 +229,7 @@ function saveProgress() {
     coins,
     selectedBall,
     selectedSkinId,
+    selectedPaddleSkinId,
     inventory,
     skins: ownedSkins
   }));
@@ -192,12 +240,12 @@ function saveProgress() {
   renderInventory();
 }
 
-function getWeightedRareBall() {
-  const totalWeight = RARITY_ORDER.reduce((sum, rarity) => sum + RARITY_INFO[rarity].weight, 0);
+function getWeightedRareBall(weights = null) {
+  const totalWeight = RARITY_ORDER.reduce((sum, rarity) => sum + (weights?.[rarity] ?? RARITY_INFO[rarity].weight), 0);
   let roll = Math.random() * totalWeight;
 
   for (const rarity of RARITY_ORDER) {
-    roll -= RARITY_INFO[rarity].weight;
+    roll -= weights?.[rarity] ?? RARITY_INFO[rarity].weight;
     if (roll <= 0) {
       return rarity;
     }
@@ -206,12 +254,19 @@ function getWeightedRareBall() {
   return "common";
 }
 
-function rollSkin() {
+function getItemSkinInfo(item) {
+  return item.type === "paddle"
+    ? { ...RARITY_INFO[item.rarity], ...PADDLE_SKIN_INFO[item.rarity] }
+    : RARITY_INFO[item.rarity];
+}
+
+function rollSkin(itemType = "ball", caseConfig = null) {
   const float = Math.random();
   const condition = WEAR_CONDITIONS.find((wear) => float <= wear.max) || WEAR_CONDITIONS[WEAR_CONDITIONS.length - 1];
   return {
     id: `skin-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    rarity: getWeightedRareBall(),
+    type: itemType,
+    rarity: getWeightedRareBall(caseConfig?.odds),
     condition: condition.label,
     float
   };
@@ -222,9 +277,23 @@ function getWearCondition(float) {
 }
 
 function getMarketValue(skin) {
-  const floatFactor = 1.2 - skin.float * 0.4;
   const marketFactor = marketPriceFactors[skin.rarity] || 1;
-  return Math.max(1, Math.round(MARKET_BASE_PRICES[skin.rarity] * floatFactor * marketFactor));
+  if (skin.type === "ball") {
+    let value;
+    if (skin.rarity === "legendary") {
+      const rareFloatPremium = 2800 * Math.exp(-skin.float / 0.0001);
+      const wearFactor = skin.float <= 0.07
+        ? 1
+        : Math.max(0.1, 1 - ((skin.float - 0.07) / 0.93) * 0.9);
+      value = (1200 + rareFloatPremium) * wearFactor;
+    } else {
+      value = BALL_MARKET_BASE_PRICES[skin.rarity] * (1.15 - skin.float * 0.75);
+    }
+    return Math.max(1, Math.round(value * marketFactor));
+  }
+
+  const floatFactor = 1.2 - skin.float * 0.4;
+  return Math.max(1, Math.round(PADDLE_MARKET_BASE_PRICES[skin.rarity] * floatFactor * marketFactor));
 }
 
 function refreshMarket() {
@@ -232,10 +301,12 @@ function refreshMarket() {
     rarity,
     0.85 + Math.random() * 0.3
   ]));
-  marketOffers = Array.from({ length: 6 }, () => {
+  marketOffers = Array.from({ length: 8 }, (_, index) => {
     const float = Math.random();
+    const type = index % 2 === 0 ? "ball" : "paddle";
     return {
       id: `market-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      type,
       rarity: getWeightedRareBall(),
       condition: getWearCondition(float),
       float
@@ -254,7 +325,7 @@ function renderMarket() {
 
   marketList.replaceChildren();
   for (const offer of marketOffers) {
-    const skin = RARITY_INFO[offer.rarity];
+    const skin = getItemSkinInfo(offer);
     const sellPrice = getMarketValue(offer);
     const buyPrice = Math.ceil(sellPrice * 1.25);
     const row = document.createElement("div");
@@ -263,7 +334,7 @@ function renderMarket() {
       <div>
         <span class="rarity-tag ${offer.rarity}">${skin.label}</span>
         <strong class="skin-name">${skin.skin}</strong>
-        <small>${offer.condition} | Float ${offer.float.toFixed(4)}</small>
+        <small>${offer.type.toUpperCase()} | ${offer.condition} | Float ${offer.float.toFixed(4)}</small>
       </div>
       <div class="market-prices">
         <small>SELL ${sellPrice} | BUY ${buyPrice}</small>
@@ -298,19 +369,25 @@ function updateMarket() {
 }
 
 function sellSkin(skinId) {
-  if (ownedSkins.length <= 1) {
-    return;
-  }
   const skinIndex = ownedSkins.findIndex((skin) => skin.id === skinId);
   if (skinIndex === -1) {
     return;
   }
 
-  const [skin] = ownedSkins.splice(skinIndex, 1);
+  const skin = ownedSkins[skinIndex];
+  const sameType = ownedSkins.filter((ownedSkin) => ownedSkin.type === skin.type);
+  if (sameType.length <= 1) {
+    return;
+  }
+
+  ownedSkins.splice(skinIndex, 1);
   coins += getMarketValue(skin);
-  if (selectedSkinId === skin.id) {
-    selectedSkinId = ownedSkins[0].id;
-    selectedBall = ownedSkins[0].rarity;
+  if (skin.type === "ball" && selectedSkinId === skin.id) {
+    const replacement = ownedSkins.find((ownedSkin) => ownedSkin.type === "ball");
+    selectedSkinId = replacement.id;
+    selectedBall = replacement.rarity;
+  } else if (skin.type === "paddle" && selectedPaddleSkinId === skin.id) {
+    selectedPaddleSkinId = ownedSkins.find((ownedSkin) => ownedSkin.type === "paddle").id;
   }
   saveProgress();
 }
@@ -333,30 +410,38 @@ function buyMarketOffer(offerId) {
 }
 
 function createReelCard(skin) {
-  const info = RARITY_INFO[skin.rarity];
+  const info = getItemSkinInfo(skin);
   const card = document.createElement("div");
   card.className = `reel-card ${skin.rarity}`;
   card.innerHTML = `
     <span class="reel-card-rarity">${info.label}</span>
-    <span class="reel-ball ${skin.rarity}" aria-hidden="true"></span>
+    ${skin.type === "paddle"
+      ? `<span class="reel-paddle ${skin.rarity}" aria-hidden="true"></span>`
+      : `<span class="reel-ball ${skin.rarity}" aria-hidden="true"></span>`}
+    <small>${skin.type.toUpperCase()}</small>
     <strong>${info.skin}</strong>
   `;
   return card;
 }
 
 function finishCaseOpening(skin) {
-  selectedSkinId = skin.id;
-  selectedBall = skin.rarity;
+  if (skin.type === "paddle") {
+    selectedPaddleSkinId = skin.id;
+  } else {
+    selectedSkinId = skin.id;
+    selectedBall = skin.rarity;
+  }
   caseAnimating = false;
   saveProgress();
 
-  const info = RARITY_INFO[skin.rarity];
+  const info = getItemSkinInfo(skin);
   const caseStatus = document.getElementById("caseStatus");
   const caseResult = document.getElementById("caseResult");
   const continueButton = document.getElementById("caseContinueButton");
   const closeButton = document.getElementById("closeCaseButton");
   caseStatus.textContent = "ITEM ACQUIRED";
   caseResult.innerHTML = `
+    <span class="item-type-tag">${skin.type.toUpperCase()}</span>
     <span class="rarity-tag ${skin.rarity}">${info.label}</span>
     <strong>${info.skin}</strong>
     <span class="condition-tag">${skin.condition}</span>
@@ -375,6 +460,39 @@ function closeCaseOpening() {
   document.getElementById("caseOpening").setAttribute("aria-hidden", "true");
 }
 
+function renderCases() {
+  const caseList = document.getElementById("caseList");
+  if (!caseList) {
+    return;
+  }
+
+  caseList.replaceChildren();
+  for (const caseConfig of CASES) {
+    const topRarities = RARITY_ORDER.filter((rarity) => caseConfig.odds[rarity] >= 5)
+      .reverse()
+      .map((rarity) => `${caseConfig.odds[rarity]}% ${RARITY_INFO[rarity].label}`)
+      .join(" / ");
+    const allOdds = RARITY_ORDER.map((rarity) =>
+      `${RARITY_INFO[rarity].label.slice(0, 1)} ${caseConfig.odds[rarity]}%`
+    ).join(" · ");
+    const row = document.createElement("div");
+    row.className = `shop-item case-card ${caseConfig.itemType}`;
+    row.innerHTML = `
+      <div class="case-copy">
+        <span class="case-type">${caseConfig.itemType.toUpperCase()} DROP</span>
+        <strong>${caseConfig.name}</strong>
+        <small>${topRarities}</small>
+        <small class="case-all-odds">${allOdds}</small>
+      </div>
+      <button class="buy-button" ${coins < caseConfig.price ? "disabled" : ""}>
+        OPEN ${caseConfig.price}
+      </button>
+    `;
+    row.querySelector("button").addEventListener("click", () => openSkinCase(caseConfig.id));
+    caseList.appendChild(row);
+  }
+}
+
 function renderInventory() {
   const inventoryList = document.getElementById("inventoryList");
   const marketList = document.getElementById("marketList");
@@ -384,10 +502,14 @@ function renderInventory() {
   }
 
   inventoryList.innerHTML = "";
+  const typedSkins = ownedSkins.filter((skin) => skin.type === inventoryType);
   for (const rarity of RARITY_ORDER) {
-    const skin = RARITY_INFO[rarity];
-    const skinsOfRarity = ownedSkins.filter((ownedSkin) => ownedSkin.rarity === rarity);
+    const skinsOfRarity = typedSkins.filter((ownedSkin) => ownedSkin.rarity === rarity);
     for (const ownedSkin of skinsOfRarity) {
+      const skin = getItemSkinInfo(ownedSkin);
+      const isEquipped = inventoryType === "paddle"
+        ? selectedPaddleSkinId === ownedSkin.id
+        : selectedSkinId === ownedSkin.id;
       const item = document.createElement("div");
       item.className = "inventory-item";
       item.innerHTML = `
@@ -398,17 +520,21 @@ function renderInventory() {
           <small>${ownedSkin.condition} | Float ${ownedSkin.float.toFixed(4)}</small>
         </div>
         <div class="inventory-actions">
-          <button class="buy-button equip-button" ${selectedSkinId === ownedSkin.id ? "disabled" : ""}>
-            ${selectedSkinId === ownedSkin.id ? "EQUIPPED" : "EQUIP"}
+          <button class="buy-button equip-button" ${isEquipped ? "disabled" : ""}>
+            ${isEquipped ? "EQUIPPED" : "EQUIP"}
           </button>
-          <button class="buy-button sell-button" ${ownedSkins.length <= 1 ? "disabled" : ""}>
+          <button class="buy-button sell-button" ${typedSkins.length <= 1 ? "disabled" : ""}>
             SELL ${getMarketValue(ownedSkin)}
           </button>
         </div>
       `;
       item.querySelector(".equip-button").addEventListener("click", () => {
-        selectedSkinId = ownedSkin.id;
-        selectedBall = rarity;
+        if (ownedSkin.type === "paddle") {
+          selectedPaddleSkinId = ownedSkin.id;
+        } else {
+          selectedSkinId = ownedSkin.id;
+          selectedBall = rarity;
+        }
         saveProgress();
       });
       item.querySelector(".sell-button").addEventListener("click", () => sellSkin(ownedSkin.id));
@@ -416,13 +542,11 @@ function renderInventory() {
     }
   }
 
+  document.querySelectorAll("[data-inventory-type]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.inventoryType === inventoryType);
+  });
   renderMarket();
-
-  const openCaseButton = document.getElementById("openCaseButton");
-  if (openCaseButton) {
-    openCaseButton.disabled = coins < 150;
-    openCaseButton.title = openCaseButton.disabled ? "Earn more coins to open a case" : "Open a skin case";
-  }
+  renderCases();
 }
 
 function setMenuMode(mode) {
@@ -433,30 +557,35 @@ function setMenuMode(mode) {
   });
 }
 
-function openBallCase() {
-  if (coins < 150 || caseAnimating) {
+function openSkinCase(caseId) {
+  const caseConfig = CASES.find((item) => item.id === caseId);
+  if (!caseConfig || coins < caseConfig.price || caseAnimating) {
     return;
   }
 
-  coins -= 150;
-  const reward = rollSkin();
+  coins -= caseConfig.price;
+  const reward = rollSkin(caseConfig.itemType, caseConfig);
   ownedSkins.push(reward);
   saveProgress();
 
   const caseOpening = document.getElementById("caseOpening");
   const caseReel = document.getElementById("caseReel");
   const reelTrack = document.getElementById("caseReelTrack");
+  const caseTitle = document.getElementById("caseTitle");
   const caseStatus = document.getElementById("caseStatus");
   const caseResult = document.getElementById("caseResult");
   const continueButton = document.getElementById("caseContinueButton");
   const closeButton = document.getElementById("closeCaseButton");
   const winningIndex = 28;
-  const reelSkins = Array.from({ length: 36 }, (_, index) => index === winningIndex ? reward : rollSkin());
+  const reelSkins = Array.from({ length: 36 }, (_, index) => index === winningIndex
+    ? reward
+    : rollSkin(caseConfig.itemType, caseConfig));
 
   reelTrack.replaceChildren(...reelSkins.map(createReelCard));
   reelTrack.style.transition = "none";
   reelTrack.style.transform = "translateX(0)";
-  caseStatus.textContent = "CASE OPENING...";
+  caseTitle.textContent = caseConfig.name;
+  caseStatus.textContent = `${caseConfig.itemType.toUpperCase()} CASE OPENING...`;
   caseResult.hidden = true;
   continueButton.hidden = true;
   closeButton.disabled = true;
@@ -525,7 +654,6 @@ function bindMenuControls() {
   const startButton = document.getElementById("startButton");
   const inventoryButton = document.getElementById("inventoryButton");
   const shopButton = document.getElementById("shopButton");
-  const openCaseButton = document.getElementById("openCaseButton");
   const closeCaseButton = document.getElementById("closeCaseButton");
   const caseContinueButton = document.getElementById("caseContinueButton");
 
@@ -538,9 +666,12 @@ function bindMenuControls() {
   if (shopButton) {
     shopButton.addEventListener("click", () => setMenuMode("shop"));
   }
-  if (openCaseButton) {
-    openCaseButton.addEventListener("click", openBallCase);
-  }
+  document.querySelectorAll("[data-inventory-type]").forEach((button) => {
+    button.addEventListener("click", () => {
+      inventoryType = button.dataset.inventoryType;
+      renderInventory();
+    });
+  });
   if (closeCaseButton) {
     closeCaseButton.addEventListener("click", closeCaseOpening);
   }
@@ -902,17 +1033,39 @@ function drawArena() {
 }
 
 function drawPaddle() {
+  const equippedSkin = ownedSkins.find((skin) => skin.id === selectedPaddleSkinId);
+  const skinInfo = PADDLE_SKIN_INFO[equippedSkin?.rarity || "common"];
+  const color = skinInfo.color;
   const paddleGradient = ctx.createLinearGradient(paddle.x, 0, paddle.x + paddle.width, 0);
-  paddleGradient.addColorStop(0, "#ff477e");
-  paddleGradient.addColorStop(0.18, "#39f5ff");
-  paddleGradient.addColorStop(0.82, "#39f5ff");
-  paddleGradient.addColorStop(1, "#ff477e");
+  paddleGradient.addColorStop(0, "#101827");
+  paddleGradient.addColorStop(0.14, color);
+  paddleGradient.addColorStop(0.86, color);
+  paddleGradient.addColorStop(1, "#f4f8ff");
 
   ctx.save();
-  ctx.shadowColor = "#39f5ff";
+  ctx.shadowColor = color;
   ctx.shadowBlur = 18;
   ctx.fillStyle = paddleGradient;
   ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
+  if (["stripes", "gold"].includes(skinInfo.pattern)) {
+    ctx.beginPath();
+    ctx.rect(paddle.x, paddle.y, paddle.width, paddle.height);
+    ctx.clip();
+    ctx.translate(paddle.x + paddle.width / 2, paddle.y + paddle.height / 2);
+    ctx.rotate(-0.45);
+    ctx.fillStyle = skinInfo.pattern === "gold" ? "rgba(255, 255, 255, 0.75)" : "rgba(8, 13, 24, 0.55)";
+    for (let stripe = -paddle.width; stripe < paddle.width; stripe += 14) {
+      ctx.fillRect(stripe, -paddle.width, 5, paddle.width * 2);
+    }
+  } else if (skinInfo.pattern === "split") {
+    ctx.fillStyle = "rgba(8, 13, 24, 0.55)";
+    ctx.fillRect(paddle.x + paddle.width / 2, paddle.y, paddle.width / 2, paddle.height);
+    ctx.fillStyle = "rgba(255, 255, 255, 0.78)";
+    ctx.fillRect(paddle.x + paddle.width / 2 - 1, paddle.y + 2, 2, paddle.height - 4);
+  } else if (skinInfo.pattern === "glow") {
+    ctx.fillStyle = "rgba(255, 255, 255, 0.78)";
+    ctx.fillRect(paddle.x + 8, paddle.y + 2, paddle.width - 16, 2);
+  }
   ctx.restore();
 }
 

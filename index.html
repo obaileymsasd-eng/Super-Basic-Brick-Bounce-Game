@@ -40,21 +40,20 @@
 
           <div id="menuPanel" class="menu-panel-body">
             <div class="panel-section active" data-panel="inventory">
+              <div class="inventory-type-switch" role="group" aria-label="Inventory item type">
+                <button class="active" type="button" data-inventory-type="ball">BALL SKINS</button>
+                <button type="button" data-inventory-type="paddle">PADDLE SKINS</button>
+              </div>
               <div id="inventoryList" class="inventory-list"></div>
             </div>
 
             <div class="panel-section" data-panel="shop">
               <h3>SHOP</h3>
-              <div class="shop-item">
-                <div class="case-shop-info">
-                  <img class="case-thumbnail" src="assets/neon-case.png" alt="Neon Break skin case">
-                  <div>
-                  <span class="rarity-tag common">COMMON</span>
-                  <p>Ball Case</p>
-                  </div>
-                </div>
-                <button id="openCaseButton" class="buy-button">150 COINS</button>
+              <div class="market-heading">
+                <h3>DROP CASES</h3>
+                <span class="case-market-note">TARGETED RARITY ODDS</span>
               </div>
+              <div id="caseList" class="case-list"></div>
               <div class="market-heading">
                 <h3>SKIN MARKET</h3>
                 <span id="marketTimer" class="market-timer"></span>
