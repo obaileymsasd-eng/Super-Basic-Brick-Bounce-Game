@@ -44,26 +44,26 @@ function bounceOffPaddle() {
     return;
   }
 
-  const paddleMidX = paddle.x + paddle.width / 2;
   const ballCenterX = ball.x + ball.width / 2;
-  const normalizedHit = Math.max(-1, Math.min(1, (ballCenterX - paddleMidX) / (paddle.width / 2)));
-  const sideThreshold = 0.32;
+  const cornerWidth = Math.min(12, Math.max(8, paddle.width * 0.08));
+  const leftCorner = ballCenterX < paddle.x + cornerWidth;
+  const rightCorner = ballCenterX > paddle.x + paddle.width - cornerWidth;
   const speed = Math.hypot(ball.vx, ball.vy) || 5;
 
   ball.y = paddle.y - ball.height;
 
-  if (Math.abs(normalizedHit) > sideThreshold) {
-    const sideStrength = Math.min(1, (Math.abs(normalizedHit) - sideThreshold) / (1 - sideThreshold));
-    const targetVx = normalizedHit * (speed * 0.95);
-    const targetVy = -Math.sqrt(Math.max(0, speed * speed - targetVx * targetVx));
-    ball.vx = targetVx + Math.sign(normalizedHit) * sideStrength * 0.8;
-    ball.vy = targetVy;
+  if (leftCorner || rightCorner) {
+    const side = leftCorner ? -1 : 1;
+    const offset = leftCorner
+      ? (ballCenterX - paddle.x) / cornerWidth
+      : (paddle.x + paddle.width - ballCenterX) / cornerWidth;
+    const normalized = Math.max(0, Math.min(1, offset));
+    const angle = side * (18 + normalized * 52) * (Math.PI / 180);
 
-    if (Math.abs(normalizedHit) > 0.78) {
-      ball.vx *= 1.15;
-    }
+    ball.vx = Math.sin(angle) * speed * 1.1;
+    ball.vy = -Math.abs(Math.cos(angle) * speed);
   } else {
-    ball.vx *= 0.25;
+    ball.vx *= 0.22;
     ball.vy = -Math.abs(ball.vy || speed);
   }
 
