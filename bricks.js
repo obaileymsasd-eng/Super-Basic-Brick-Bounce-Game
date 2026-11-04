@@ -3,13 +3,16 @@
 // ============================================================
 
 const BRICK_COLUMNS = 8;
-const BRICK_ROWS = 4;
+const BRICK_ROWS = 6;
 const BRICK_WIDTH = 60;
 const BRICK_HEIGHT = 20;
 const BRICK_GAP = 6;     // empty space between bricks
 const BRICKS_TOP = 50;   // how far down the first row starts
 const POWER_UP_TYPES = ["shot", "life", "combo", "wide"];
 const TNT_FUSE_SECONDS = 1.2;
+const MOVING_ROW_AMPLITUDE = 18;
+const MOVING_ROW_SPEED = 1.5;
+let movingRowIndex = -1;
 
 // Builds the list of bricks. Each brick is an object with an
 // x, y, width, and height.
@@ -22,13 +25,17 @@ function makeBricks() {
 
   for (let row = 0; row < BRICK_ROWS; row++) {
     for (let col = 0; col < BRICK_COLUMNS; col++) {
+      const x = left + col * (BRICK_WIDTH + BRICK_GAP);
       list.push({
-        x: left + col * (BRICK_WIDTH + BRICK_GAP),
+        x,
+        baseX: x,
         y: BRICKS_TOP + row * (BRICK_HEIGHT + BRICK_GAP),
+        baseY: BRICKS_TOP + row * (BRICK_HEIGHT + BRICK_GAP),
         width: BRICK_WIDTH,
         height: BRICK_HEIGHT,
         row,
         col,
+        isMovingRow: false,
         type: "normal",
         hitsRemaining: 1
       });
@@ -47,6 +54,14 @@ function makeBricks() {
   tntBrick.type = "tnt";
   tntBrick.fuseRemaining = 0;
 
+  const rowOptions = Array.from({ length: BRICK_ROWS }, (_, rowIndex) => rowIndex)
+    .filter((rowIndex) => rowIndex !== tntBrick.row);
+  movingRowIndex = rowOptions[Math.floor(Math.random() * rowOptions.length)] ?? -1;
+
+  for (const brick of list) {
+    brick.isMovingRow = brick.row === movingRowIndex;
+  }
+
   const availableIndices = list.map((_, index) => index);
   for (let count = 0; count < 4; count++) {
     const randomIndex = Math.floor(Math.random() * availableIndices.length);
@@ -58,9 +73,25 @@ function makeBricks() {
   return list;
 }
 
+function updateMovingBrickRow() {
+  if (movingRowIndex < 0) {
+    return;
+  }
+
+  const offset = Math.sin(performance.now() / 350 * MOVING_ROW_SPEED) * MOVING_ROW_AMPLITUDE;
+
+  for (const brick of bricks) {
+    if (brick.row !== movingRowIndex) {
+      continue;
+    }
+    brick.x = brick.baseX + offset;
+    brick.y = brick.baseY;
+  }
+}
+
 // Each row gets its own neon color, with a bright edge and soft glow.
 function drawBricks() {
-  const rowColors = ["#ff477e", "#ff9f43", "#d7ff47", "#39f5ff"];
+  const rowColors = ["#ff477e", "#ff9f43", "#d7ff47", "#39f5ff", "#ff60c8", "#a6ff7c"];
 
   for (const brick of bricks) {
     const row = Math.round((brick.y - BRICKS_TOP) / (BRICK_HEIGHT + BRICK_GAP));

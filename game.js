@@ -814,6 +814,7 @@ function update() {
   }
 
   movePaddle();
+  updateMovingBrickRow();
   if (!ballLaunched) {
     ball.x = paddle.x + paddle.width / 2 - ball.width / 2;
     ball.y = paddle.y - ball.height;
