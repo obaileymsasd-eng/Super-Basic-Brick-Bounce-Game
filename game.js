@@ -621,6 +621,8 @@ function resetGameRound() {
   fallingPowerUps = [];
   projectiles = [];
   explosions = [];
+  paddleRipples = [];
+  brickSparks = [];
   aimCharges = 0;
   comboProtectionTime = 0;
   widePaddleTime = 0;
@@ -685,6 +687,8 @@ function bindMenuControls() {
 // ------------------------------------------------------------
 let bricks = [];
 let explosions = [];
+let paddleRipples = [];
+let brickSparks = [];
 
 
 // ------------------------------------------------------------
@@ -815,6 +819,8 @@ function update() {
 
   movePaddle();
   updateMovingBrickRow();
+  updatePaddleRipples();
+  updateBrickSparks();
   if (!ballLaunched) {
     ball.x = paddle.x + paddle.width / 2 - ball.width / 2;
     ball.y = paddle.y - ball.height;
@@ -1228,6 +1234,25 @@ function drawProjectiles() {
   ctx.restore();
 }
 
+function drawPaddleRipples() {
+  for (const ripple of paddleRipples) {
+    const alpha = 1 - ripple.age / ripple.duration;
+    ctx.save();
+    ctx.strokeStyle = `rgba(57, 245, 255, ${Math.max(0, alpha * 0.9)})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(ripple.x, ripple.y, ripple.radius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.strokeStyle = `rgba(255, 255, 255, ${Math.max(0, alpha * 0.55)})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(ripple.x, ripple.y, ripple.radius + 5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
 function drawLaunchAim() {
   if (gameState !== "playing" || ballLaunched) {
     return;
@@ -1313,6 +1338,7 @@ function draw() {
   drawPowerUps();
   drawProjectiles();
   drawPaddle();
+  drawPaddleRipples();
   drawBall();
   drawLaunchAim();
   drawAimArrow();

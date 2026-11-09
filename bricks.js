@@ -163,6 +163,17 @@ function drawBricks() {
 }
 
 function drawBrickEffects() {
+  for (const spark of brickSparks) {
+    const progress = spark.age / spark.life;
+    ctx.save();
+    ctx.globalAlpha = 1 - progress;
+    ctx.fillStyle = spark.color;
+    ctx.beginPath();
+    ctx.arc(spark.x, spark.y, spark.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
   for (const explosion of explosions) {
     const progress = explosion.age / explosion.duration;
     const radius = explosion.radius * progress;

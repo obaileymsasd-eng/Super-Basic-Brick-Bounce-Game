@@ -67,8 +67,27 @@ function bounceOffPaddle() {
     ball.vy = -Math.abs(ball.vy || speed);
   }
 
+  paddleRipples.push({
+    x: ballCenterX,
+    y: paddle.y + paddle.height / 2,
+    radius: 6,
+    age: 0,
+    duration: 0.5
+  });
+
   if (comboProtectionTime === 0) {
     combo = 1;
+  }
+}
+
+function updatePaddleRipples() {
+  for (let index = paddleRipples.length - 1; index >= 0; index--) {
+    const ripple = paddleRipples[index];
+    ripple.age += STEP / 1000;
+    ripple.radius = 6 + (ripple.age / ripple.duration) * 34;
+    if (ripple.age >= ripple.duration) {
+      paddleRipples.splice(index, 1);
+    }
   }
 }
 
@@ -142,6 +161,37 @@ function updateBrickEffects() {
   }
 }
 
+function updateBrickSparks() {
+  for (let index = brickSparks.length - 1; index >= 0; index--) {
+    const spark = brickSparks[index];
+    spark.age += STEP / 1000;
+    spark.x += spark.vx * (STEP / 16.67);
+    spark.y += spark.vy * (STEP / 16.67);
+    spark.vx *= 0.94;
+    spark.vy *= 0.94;
+    if (spark.age >= spark.life) {
+      brickSparks.splice(index, 1);
+    }
+  }
+}
+
+function spawnBrickSparks(x, y, color) {
+  for (let index = 0; index < 7; index++) {
+    const angle = (Math.PI * 2 * index) / 7 + Math.random() * 0.8;
+    const speed = 0.8 + Math.random() * 2.2;
+    brickSparks.push({
+      x,
+      y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      radius: 1.5 + Math.random() * 2.4,
+      color,
+      age: 0,
+      life: 0.35 + Math.random() * 0.25
+    });
+  }
+}
+
 
 // The ball bounces off and breaks a brick.
 function bounceOffBricks() {
@@ -172,6 +222,11 @@ function bounceOffBricks() {
       }
     }
     hitBrick(brick);
+    spawnBrickSparks(
+      brick.x + brick.width / 2,
+      brick.y + brick.height / 2,
+      brick.type === "tnt" ? "#ff9f43" : "#d7ff47"
+    );
 
     break;  // bounce off one brick per update, then stop looking
   }
