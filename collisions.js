@@ -48,7 +48,7 @@ function bounceOffPaddle() {
   const cornerWidth = Math.min(12, Math.max(8, paddle.width * 0.08));
   const leftCorner = ballCenterX < paddle.x + cornerWidth;
   const rightCorner = ballCenterX > paddle.x + paddle.width - cornerWidth;
-  const impactStrength = Math.min(3, Math.hypot(ball.vx, ball.vy) / 5);
+  const hitIntensity = Math.min(1.2, (Math.hypot(ball.vx, ball.vy) || 5) / 10);
   const speed = Math.hypot(ball.vx, ball.vy) || 5;
 
   ball.y = paddle.y - ball.height;
@@ -75,19 +75,19 @@ function bounceOffPaddle() {
   ball.vx = directionX * boostedSpeed;
   ball.vy = directionY * boostedSpeed;
 
-  const sparkCount = 12 + Math.round(impactStrength * 8);
+  const sparkCount = 8 + Math.round(hitIntensity * 6);
   for (let index = 0; index < sparkCount; index++) {
-    const angle = (Math.PI * 2 * index) / sparkCount + Math.random() * 0.9;
-    const sparkSpeed = 1.2 + impactStrength * 1.7 + Math.random() * 2.6;
+    const angle = (Math.PI * 2 * index) / sparkCount + Math.random() * 0.8;
+    const sparkSpeed = 0.8 + hitIntensity * 1.1 + Math.random() * 1.2;
     paddleRipples.push({
       x: ballCenterX,
       y: paddle.y + paddle.height / 2,
       vx: Math.cos(angle) * sparkSpeed,
-      vy: Math.sin(angle) * sparkSpeed - 0.8,
-      radius: 4 + impactStrength * 2.6,
+      vy: Math.sin(angle) * sparkSpeed - 0.5,
+      radius: 2.5 + hitIntensity * 2,
       age: 0,
-      duration: 0.65 + impactStrength * 0.35,
-      maxRadius: 20 + impactStrength * 18
+      duration: 0.45 + hitIntensity * 0.2,
+      maxRadius: 12 + hitIntensity * 8
     });
   }
 
@@ -102,7 +102,7 @@ function updatePaddleRipples() {
     ripple.age += STEP / 1000;
     ripple.x += ripple.vx * (STEP / 16.67);
     ripple.y += ripple.vy * (STEP / 16.67);
-    ripple.radius += (STEP / 16.67) * (0.8 + ripple.maxRadius / 40);
+    ripple.radius += (STEP / 16.67) * 0.55;
     if (ripple.age >= ripple.duration) {
       paddleRipples.splice(index, 1);
     }
