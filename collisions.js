@@ -48,6 +48,7 @@ function bounceOffPaddle() {
   const cornerWidth = Math.min(12, Math.max(8, paddle.width * 0.08));
   const leftCorner = ballCenterX < paddle.x + cornerWidth;
   const rightCorner = ballCenterX > paddle.x + paddle.width - cornerWidth;
+  const impactStrength = Math.min(3, Math.hypot(ball.vx, ball.vy) / 5);
   const speed = Math.hypot(ball.vx, ball.vy) || 5;
 
   ball.y = paddle.y - ball.height;
@@ -67,13 +68,28 @@ function bounceOffPaddle() {
     ball.vy = -Math.abs(ball.vy || speed);
   }
 
-  paddleRipples.push({
-    x: ballCenterX,
-    y: paddle.y + paddle.height / 2,
-    radius: 6,
-    age: 0,
-    duration: 0.5
-  });
+  const currentSpeed = Math.hypot(ball.vx, ball.vy) || 1;
+  const directionX = ball.vx / currentSpeed;
+  const directionY = ball.vy / currentSpeed;
+  const boostedSpeed = currentSpeed * 1.05;
+  ball.vx = directionX * boostedSpeed;
+  ball.vy = directionY * boostedSpeed;
+
+  const sparkCount = 12 + Math.round(impactStrength * 8);
+  for (let index = 0; index < sparkCount; index++) {
+    const angle = (Math.PI * 2 * index) / sparkCount + Math.random() * 0.9;
+    const sparkSpeed = 1.2 + impactStrength * 1.7 + Math.random() * 2.6;
+    paddleRipples.push({
+      x: ballCenterX,
+      y: paddle.y + paddle.height / 2,
+      vx: Math.cos(angle) * sparkSpeed,
+      vy: Math.sin(angle) * sparkSpeed - 0.8,
+      radius: 4 + impactStrength * 2.6,
+      age: 0,
+      duration: 0.65 + impactStrength * 0.35,
+      maxRadius: 20 + impactStrength * 18
+    });
+  }
 
   if (comboProtectionTime === 0) {
     combo = 1;
@@ -84,7 +100,9 @@ function updatePaddleRipples() {
   for (let index = paddleRipples.length - 1; index >= 0; index--) {
     const ripple = paddleRipples[index];
     ripple.age += STEP / 1000;
-    ripple.radius = 6 + (ripple.age / ripple.duration) * 34;
+    ripple.x += ripple.vx * (STEP / 16.67);
+    ripple.y += ripple.vy * (STEP / 16.67);
+    ripple.radius += (STEP / 16.67) * (0.8 + ripple.maxRadius / 40);
     if (ripple.age >= ripple.duration) {
       paddleRipples.splice(index, 1);
     }
@@ -178,16 +196,16 @@ function updateBrickSparks() {
 function spawnBrickSparks(x, y, color) {
   for (let index = 0; index < 7; index++) {
     const angle = (Math.PI * 2 * index) / 7 + Math.random() * 0.8;
-    const speed = 0.8 + Math.random() * 2.2;
+    const speed = 1.0 + Math.random() * 2.8;
     brickSparks.push({
       x,
       y,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed,
-      radius: 1.5 + Math.random() * 2.4,
+      radius: 1.7 + Math.random() * 2.8,
       color,
       age: 0,
-      life: 0.35 + Math.random() * 0.25
+      life: 0.6 + Math.random() * 0.4
     });
   }
 }
