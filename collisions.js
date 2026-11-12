@@ -6,6 +6,8 @@
 //   hit something above or below -> vy = -vy
 // ============================================================
 
+const TNT_SCORE_MULTIPLIER = 1.25;
+
 // Returns true if two rectangles (like the ball and a brick) overlap.
 function boxesTouch(a, b) {
   return (
@@ -101,14 +103,14 @@ function updatePaddleRipples() {
   }
 }
 
-function destroyBrick(brick) {
+function destroyBrick(brick, scoreMultiplier = combo) {
   const index = bricks.indexOf(brick);
   if (index === -1) {
     return;
   }
 
   bricks.splice(index, 1);
-  score = score + 10 * combo;
+  score = score + 10 * scoreMultiplier;
   combo = combo + 0.5;
   spawnPowerUp(brick);
 }
@@ -146,9 +148,9 @@ function detonateTnt(brick) {
     radius: Math.hypot(BRICK_WIDTH + BRICK_GAP, BRICK_HEIGHT + BRICK_GAP) * 1.1
   });
 
-  destroyBrick(brick);
+  destroyBrick(brick, TNT_SCORE_MULTIPLIER);
   for (const neighbor of neighbors) {
-    destroyBrick(neighbor);
+    destroyBrick(neighbor, TNT_SCORE_MULTIPLIER);
   }
 }
 
