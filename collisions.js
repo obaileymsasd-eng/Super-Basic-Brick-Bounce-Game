@@ -75,21 +75,14 @@ function bounceOffPaddle() {
   ball.vx = directionX * boostedSpeed;
   ball.vy = directionY * boostedSpeed;
 
-  const sparkCount = 8 + Math.round(hitIntensity * 6);
-  for (let index = 0; index < sparkCount; index++) {
-    const angle = (Math.PI * 2 * index) / sparkCount + Math.random() * 0.8;
-    const sparkSpeed = 0.8 + hitIntensity * 1.1 + Math.random() * 1.2;
-    paddleRipples.push({
-      x: ballCenterX,
-      y: paddle.y + paddle.height / 2,
-      vx: Math.cos(angle) * sparkSpeed,
-      vy: Math.sin(angle) * sparkSpeed - 0.5,
-      radius: 2.5 + hitIntensity * 2,
-      age: 0,
-      duration: 0.45 + hitIntensity * 0.2,
-      maxRadius: 12 + hitIntensity * 8
-    });
-  }
+  paddleRipples.push({
+    x: ballCenterX,
+    y: paddle.y + paddle.height / 2,
+    radius: 3,
+    age: 0,
+    duration: 0.45 + hitIntensity * 0.2,
+    maxRadius: 32 + hitIntensity * 8
+  });
 
   if (comboProtectionTime === 0) {
     combo = 1;
@@ -100,9 +93,8 @@ function updatePaddleRipples() {
   for (let index = paddleRipples.length - 1; index >= 0; index--) {
     const ripple = paddleRipples[index];
     ripple.age += STEP / 1000;
-    ripple.x += ripple.vx * (STEP / 16.67);
-    ripple.y += ripple.vy * (STEP / 16.67);
-    ripple.radius += (STEP / 16.67) * 0.55;
+    const progress = Math.min(1, ripple.age / ripple.duration);
+    ripple.radius = 3 + (ripple.maxRadius - 3) * progress;
     if (ripple.age >= ripple.duration) {
       paddleRipples.splice(index, 1);
     }

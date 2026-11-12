@@ -616,6 +616,7 @@ function grantLastGameReward() {
 function resetGameRound() {
   isPaused = false;
   score = 0;
+  level = 1;
   combo = 1;
   lives = MAX_LIVES;
   fallingPowerUps = [];
@@ -627,9 +628,21 @@ function resetGameRound() {
   comboProtectionTime = 0;
   widePaddleTime = 0;
   setPaddleWidth(PADDLE_BASE_WIDTH);
-  bricks = makeBricks();
+  bricks = makeBricks(level);
   resetBall();
   lastGameRewardGranted = false;
+}
+
+function advanceLevel() {
+  level++;
+  bricks = makeBricks(level);
+  fallingPowerUps = [];
+  projectiles = [];
+  explosions = [];
+  paddleRipples = [];
+  brickSparks = [];
+  combo = 1;
+  resetBall();
 }
 
 function startGame() {
@@ -706,6 +719,7 @@ let rWasDown = false;
 let mWasDown = false;
 let pWasDown = false;
 let lives = MAX_LIVES;
+let level = 1;
 // --- SCORE -------------------------------------------------------------  
 // A singleton: there is only one score, and every file shares it.  
 // --- COMBO --------------------------------------------------------------  
@@ -836,10 +850,13 @@ function update() {
   updateProjectiles();
   updateBrickEffects();
   updatePowerUpTimers();
-    // if every brick is gone, the player has won  
-  if (bricks.length === 0 && gameState === "playing") {  
-    gameState = "won";  
-  }  
+  if (bricks.length === 0 && gameState === "playing") {
+    if (level < LEVEL_LAYOUTS.length) {
+      advanceLevel();
+    } else {
+      gameState = "won";
+    }
+  }
 
 
   // The ball fell off the bottom: back to the center.
@@ -1239,15 +1256,9 @@ function drawPaddleRipples() {
     const alpha = 1 - ripple.age / ripple.duration;
     ctx.save();
     ctx.strokeStyle = `rgba(57, 245, 255, ${Math.max(0, alpha * 0.9)})`;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.arc(ripple.x, ripple.y, ripple.radius, 0, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.strokeStyle = `rgba(255, 255, 255, ${Math.max(0, alpha * 0.55)})`;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(ripple.x, ripple.y, ripple.radius + 5, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
   }
@@ -1350,6 +1361,9 @@ function draw() {
   ctx.fillText("SCORE //", 14, 11);
   ctx.fillStyle = "#39f5ff";
   ctx.fillText(String(score).padStart(5, "0"), 100, 11);
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#e7f2ff";
+  ctx.fillText("LEVEL // " + level + "/" + LEVEL_LAYOUTS.length, WIDTH / 2, 11);
   ctx.textAlign = "right";
   ctx.fillStyle = "#8a9bad";
   ctx.fillText("BLOCKS // " + bricks.length, WIDTH - 14, 11);

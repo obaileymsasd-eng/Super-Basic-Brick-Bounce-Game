@@ -9,6 +9,38 @@ const BRICK_HEIGHT = 20;
 const BRICK_GAP = 6;     // empty space between bricks
 const BRICKS_TOP = 50;   // how far down the first row starts
 const POWER_UP_TYPES = ["shot", "life", "combo", "wide"];
+const LEVEL_LAYOUTS = [
+  {
+    rows: ["11111111", "11111111", "11111111", "11111111", "11111111", "11111111"],
+    reinforced: 4,
+    tnt: 1
+  },
+  {
+    rows: ["00111100", "01111110", "11111111", "11111111", "01111110", "00111100"],
+    reinforced: 5,
+    tnt: 1
+  },
+  {
+    rows: ["10101010", "11111111", "01010101", "11111111", "10101010", "11111111"],
+    reinforced: 7,
+    tnt: 1
+  },
+  {
+    rows: ["11111111", "10111101", "11111111", "11011011", "11111111", "10111101"],
+    reinforced: 9,
+    tnt: 1
+  },
+  {
+    rows: ["01111110", "11111111", "11111111", "11111111", "11111111", "01111110"],
+    reinforced: 11,
+    tnt: 1
+  },
+  {
+    rows: ["11111111", "11101111", "11111111", "11011111", "11111111", "11101111"],
+    reinforced: 18,
+    tnt: 2
+  }
+];
 const TNT_FUSE_SECONDS = 1.2;
 const MOVING_ROW_AMPLITUDE = 18;
 const MOVING_ROW_SPEED = 1.5;
@@ -16,8 +48,9 @@ let movingRowIndex = -1;
 
 // Builds the list of bricks. Each brick is an object with an
 // x, y, width, and height.
-function makeBricks() {
+function makeBricks(level = 1) {
   const list = [];
+  const layout = LEVEL_LAYOUTS[Math.min(Math.max(level, 1), LEVEL_LAYOUTS.length) - 1];
 
   // Center the whole block of bricks on the screen.
   const totalWidth = BRICK_COLUMNS * BRICK_WIDTH + (BRICK_COLUMNS - 1) * BRICK_GAP;
@@ -25,6 +58,9 @@ function makeBricks() {
 
   for (let row = 0; row < BRICK_ROWS; row++) {
     for (let col = 0; col < BRICK_COLUMNS; col++) {
+      if (layout.rows[row][col] !== "1") {
+        continue;
+      }
       const x = left + col * (BRICK_WIDTH + BRICK_GAP);
       list.push({
         x,
@@ -43,19 +79,23 @@ function makeBricks() {
   }
 
   const specialIndices = list.map((_, index) => index);
-  for (let count = 0; count < 4; count++) {
+  for (let count = 0; count < layout.reinforced; count++) {
     const randomIndex = Math.floor(Math.random() * specialIndices.length);
     const brickIndex = specialIndices.splice(randomIndex, 1)[0];
     list[brickIndex].type = "reinforced";
     list[brickIndex].hitsRemaining = 2;
   }
-  const tntIndex = Math.floor(Math.random() * specialIndices.length);
-  const tntBrick = list[specialIndices[tntIndex]];
-  tntBrick.type = "tnt";
-  tntBrick.fuseRemaining = 0;
+  const tntBricks = [];
+  for (let count = 0; count < layout.tnt; count++) {
+    const tntIndex = Math.floor(Math.random() * specialIndices.length);
+    const tntBrick = list[specialIndices.splice(tntIndex, 1)[0]];
+    tntBrick.type = "tnt";
+    tntBrick.fuseRemaining = 0;
+    tntBricks.push(tntBrick);
+  }
 
   const rowOptions = Array.from({ length: BRICK_ROWS }, (_, rowIndex) => rowIndex)
-    .filter((rowIndex) => rowIndex !== tntBrick.row);
+    .filter((rowIndex) => !tntBricks.some((brick) => brick.row === rowIndex));
   movingRowIndex = rowOptions[Math.floor(Math.random() * rowOptions.length)] ?? -1;
 
   for (const brick of list) {
@@ -146,9 +186,7 @@ function drawBricks() {
         ctx.shadowColor = "#ffbd59";
         ctx.shadowBlur = 12;
         ctx.fillStyle = "#fff4a8";
-        ctx.beginPath();
-        ctx.arc(fuseX, sparkY, 3, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.fillRect(fuseX - 2, sparkY - 2, 4, 4);
         ctx.shadowBlur = 0;
         ctx.fillStyle = "#24121a";
         ctx.fillRect(brick.x + 6, brick.y + brick.height - 3, brick.width - 12, 2);
@@ -168,9 +206,8 @@ function drawBrickEffects() {
     ctx.save();
     ctx.globalAlpha = 1 - progress;
     ctx.fillStyle = spark.color;
-    ctx.beginPath();
-    ctx.arc(spark.x, spark.y, spark.radius, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.fillRect(spark.x - spark.radius, spark.y - spark.radius,
+      spark.radius * 2, spark.radius * 2);
     ctx.restore();
   }
 
