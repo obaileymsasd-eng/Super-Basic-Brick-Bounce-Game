@@ -1328,6 +1328,10 @@ function drawPaddle() {
 }
 
 function drawBall() {
+  if (!ballLaunched && getAwpBarrelPosition()) {
+    return;
+  }
+
   const equippedSkin = ownedSkins.find((skin) => skin.id === selectedSkinId) || { rarity: selectedBall, float: 0.03 };
   const skin = { ...RARITY_INFO[equippedSkin.rarity || selectedBall], ...equippedSkin };
   const centerX = ball.x + ball.width / 2;
