@@ -115,7 +115,7 @@ function destroyBrick(brick, scoreMultiplier = combo) {
   }
 
   bricks.splice(index, 1);
-  score = score + 10 * scoreMultiplier;
+  score = score + Math.floor(10 * scoreMultiplier);
   combo = combo + 0.5;
   spawnPowerUp(brick);
 }

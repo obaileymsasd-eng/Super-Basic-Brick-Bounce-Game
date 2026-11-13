@@ -18,7 +18,7 @@ const PADDLE_BASE_WIDTH = 90;
 const AWP_PADDLE_SKIN_ID = "awp-lightning";
 const AWP_PADDLE_IMAGE = "assets/awp-lightning.jpg";
 const AWP_PADDLE_UNLOCK_CODE = "435";
-const AWP_PADDLE_CROP = { x: 48, y: 180, width: 967, height: 190 };
+const AWP_PADDLE_CROP = { x: 20, y: 150, width: 1010, height: 250 };
 const awpPaddleImage = new Image();
 let awpPaddleTexture = null;
 let lastPaddleDirection = -1;
@@ -114,8 +114,11 @@ function launchBall() {
     return;
   }
 
-  const startX = paddle.x + paddle.width / 2;
-  const startY = paddle.y;
+  const awpBarrel = getAwpBarrelPosition();
+  const startX = awpBarrel
+    ? awpBarrel.x + awpBarrel.direction * ball.width / 2
+    : paddle.x + paddle.width / 2;
+  const startY = awpBarrel ? awpBarrel.y : paddle.y;
   const targetX = mouseX;
   const targetY = Math.min(mouseY, startY - 40);
   const directionX = targetX - startX;
@@ -123,7 +126,7 @@ function launchBall() {
   const distance = Math.hypot(directionX, directionY) || 1;
 
   ball.x = startX - ball.width / 2;
-  ball.y = startY - ball.height;
+  ball.y = awpBarrel ? startY - ball.height / 2 : startY - ball.height;
   ball.vx = directionX / distance * BALL_SPEED;
   ball.vy = directionY / distance * BALL_SPEED;
   ballLaunched = true;
@@ -140,6 +143,20 @@ const paddle = {
   height: 12,
   speed: 6
 };
+
+function getAwpBarrelPosition() {
+  const equippedSkin = ownedSkins.find((skin) => skin.id === selectedPaddleSkinId);
+  if (equippedSkin?.specialId !== AWP_PADDLE_SKIN_ID) {
+    return null;
+  }
+
+  const direction = lastPaddleDirection > 0 ? 1 : -1;
+  const muzzleX = direction > 0
+    ? paddle.x + paddle.width * 0.96
+    : paddle.x + paddle.width * 0.04;
+  const muzzleY = paddle.y - 2 + (paddle.height + 4) * 0.416;
+  return { x: muzzleX, y: muzzleY, direction };
+}
 
 const RARITY_ORDER = ["common", "uncommon", "rare", "epic", "legendary"];
 const RARITY_INFO = {
@@ -345,6 +362,10 @@ function getWearCondition(float) {
 }
 
 function getMarketValue(skin) {
+  if (skin.specialId === AWP_PADDLE_SKIN_ID) {
+    return 1;
+  }
+
   const marketFactor = marketPriceFactors[skin.rarity] || 1;
   if (skin.type === "ball") {
     let value;
@@ -1084,8 +1105,11 @@ function updatePowerUps() {
 }
 
 function fireProjectile() {
-  const startX = paddle.x + paddle.width / 2;
-  const startY = paddle.y;
+  const awpBarrel = getAwpBarrelPosition();
+  const startX = awpBarrel
+    ? awpBarrel.x + awpBarrel.direction * 4
+    : paddle.x + paddle.width / 2;
+  const startY = awpBarrel ? awpBarrel.y : paddle.y;
   const directionX = mouseX - startX;
   const directionY = mouseY - startY;
   const distance = Math.hypot(directionX, directionY) || 1;
@@ -1237,8 +1261,6 @@ function drawPaddle() {
   const color = skinInfo.color;
   if (equippedSkin.specialId === AWP_PADDLE_SKIN_ID) {
     ctx.save();
-    ctx.shadowColor = "#c77dff";
-    ctx.shadowBlur = 15;
     ctx.fillStyle = "#160f25";
     ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
     if (awpPaddleTexture) {
@@ -1419,8 +1441,11 @@ function drawLaunchAim() {
     return;
   }
 
-  const startX = paddle.x + paddle.width / 2;
-  const startY = paddle.y - 4;
+  const awpBarrel = getAwpBarrelPosition();
+  const startX = awpBarrel
+    ? awpBarrel.x + awpBarrel.direction * ball.width / 2
+    : paddle.x + paddle.width / 2;
+  const startY = awpBarrel ? awpBarrel.y : paddle.y - 4;
   const targetX = mouseX;
   const targetY = Math.min(mouseY, startY - 40);
   const angle = Math.atan2(targetY - startY, targetX - startX);
@@ -1461,8 +1486,11 @@ function drawAimArrow() {
     return;
   }
 
-  const startX = paddle.x + paddle.width / 2;
-  const startY = paddle.y - 5;
+  const awpBarrel = getAwpBarrelPosition();
+  const startX = awpBarrel
+    ? awpBarrel.x + awpBarrel.direction * 4
+    : paddle.x + paddle.width / 2;
+  const startY = awpBarrel ? awpBarrel.y : paddle.y - 5;
   const angle = Math.atan2(mouseY - startY, mouseX - startX);
   const endX = startX + Math.cos(angle) * 34;
   const endY = startY + Math.sin(angle) * 34;
