@@ -12,8 +12,68 @@ const ctx = canvas.getContext("2d");
 const WIDTH = canvas.width;   // 600
 const HEIGHT = canvas.height; // 450
 const MAX_LIVES = 3;
+const BALL_MAX_SPEED = 8;
 const LIFE_COLORS = ["#39f5ff", "#ff477e", "#d7ff47"];
 const PADDLE_BASE_WIDTH = 90;
+const AWP_PADDLE_SKIN_ID = "awp-lightning";
+const AWP_PADDLE_IMAGE = "assets/awp-lightning.jpg";
+const AWP_PADDLE_UNLOCK_CODE = "435";
+const AWP_PADDLE_CROP = { x: 48, y: 180, width: 967, height: 190 };
+const awpPaddleImage = new Image();
+let awpPaddleTexture = null;
+let lastPaddleDirection = -1;
+awpPaddleImage.addEventListener("load", () => {
+  const { x, y, width, height } = AWP_PADDLE_CROP;
+  const texture = document.createElement("canvas");
+  texture.width = width;
+  texture.height = height;
+  const textureContext = texture.getContext("2d", { willReadFrequently: true });
+  textureContext.drawImage(awpPaddleImage, x, y, width, height, 0, 0, width, height);
+
+  const imageData = textureContext.getImageData(0, 0, width, height);
+  const pixels = imageData.data;
+  const background = [pixels[0], pixels[1], pixels[2]];
+  const visited = new Uint8Array(width * height);
+  const queue = [];
+  const isBackground = (pixelIndex) => {
+    const offset = pixelIndex * 4;
+    return Math.abs(pixels[offset] - background[0]) <= 42 &&
+      Math.abs(pixels[offset + 1] - background[1]) <= 42 &&
+      Math.abs(pixels[offset + 2] - background[2]) <= 42;
+  };
+  const enqueueBackground = (pixelIndex) => {
+    if (!visited[pixelIndex] && isBackground(pixelIndex)) {
+      visited[pixelIndex] = 1;
+      queue.push(pixelIndex);
+    }
+  };
+
+  for (let column = 0; column < width; column++) {
+    enqueueBackground(column);
+    enqueueBackground((height - 1) * width + column);
+  }
+  for (let row = 0; row < height; row++) {
+    enqueueBackground(row * width);
+    enqueueBackground(row * width + width - 1);
+  }
+
+  while (queue.length > 0) {
+    const pixelIndex = queue.pop();
+    pixels[pixelIndex * 4 + 3] = 0;
+    const column = pixelIndex % width;
+    if (column > 0) enqueueBackground(pixelIndex - 1);
+    if (column < width - 1) enqueueBackground(pixelIndex + 1);
+    if (pixelIndex >= width) enqueueBackground(pixelIndex - width);
+    if (pixelIndex < width * (height - 1)) enqueueBackground(pixelIndex + width);
+  }
+
+  textureContext.putImageData(imageData, 0, 0);
+  awpPaddleTexture = texture;
+});
+awpPaddleImage.addEventListener("error", () => {
+  console.error(`Could not load paddle skin image: ${AWP_PADDLE_IMAGE}`);
+});
+awpPaddleImage.src = AWP_PADDLE_IMAGE;
 const POWER_UP_STYLES = {
   shot: { color: "#ff477e", label: "A" },
   life: { color: "#d7ff47", label: "+1" },
@@ -106,7 +166,7 @@ const CASES = [
   { id: "volt-paddle", name: "Volt Circuit", itemType: "paddle", price: 300, odds: { common: 12, uncommon: 58, rare: 22, epic: 7, legendary: 1 } },
   { id: "ion-paddle", name: "Ion Circuit", itemType: "paddle", price: 500, odds: { common: 7, uncommon: 15, rare: 55, epic: 18, legendary: 5 } },
   { id: "prism-paddle", name: "Prism Circuit", itemType: "paddle", price: 850, odds: { common: 3, uncommon: 9, rare: 20, epic: 52, legendary: 16 } },
-  { id: "solar-paddle", name: "Solar Circuit", itemType: "paddle", price: 1300, odds: { common: 2, uncommon: 5, rare: 13, epic: 25, legendary: 55 } }
+  { id: "solar-paddle", name: "Solar Circuit", itemType: "paddle", price: 1300, odds: { common: 2, uncommon: 5, rare: 13, epic: 25, legendary: 55 }, specialDrop: { chance: 0.1 } }
 ];
 const WEAR_CONDITIONS = [
   { label: "Factory New", max: 0.07 },
@@ -168,6 +228,7 @@ function loadProgress() {
         id: skin.id,
         type: skin.type === "paddle" ? "paddle" : "ball",
         rarity: skin.rarity,
+        specialId: skin.specialId === AWP_PADDLE_SKIN_ID ? AWP_PADDLE_SKIN_ID : undefined,
         condition: WEAR_CONDITIONS.find((condition) => condition.label === skin.condition)?.label || "Factory New",
         float: Math.max(0, Math.min(1, Number(skin.float) || 0))
       }));
@@ -255,6 +316,9 @@ function getWeightedRareBall(weights = null) {
 }
 
 function getItemSkinInfo(item) {
+  if (item.specialId === AWP_PADDLE_SKIN_ID) {
+    return { ...RARITY_INFO.legendary, ...PADDLE_SKIN_INFO.legendary, skin: "AWP Lightning Strike" };
+  }
   return item.type === "paddle"
     ? { ...RARITY_INFO[item.rarity], ...PADDLE_SKIN_INFO[item.rarity] }
     : RARITY_INFO[item.rarity];
@@ -263,10 +327,14 @@ function getItemSkinInfo(item) {
 function rollSkin(itemType = "ball", caseConfig = null) {
   const float = Math.random();
   const condition = WEAR_CONDITIONS.find((wear) => float <= wear.max) || WEAR_CONDITIONS[WEAR_CONDITIONS.length - 1];
+  const isAwpDrop = itemType === "paddle" &&
+    caseConfig?.specialDrop &&
+    Math.random() < caseConfig.specialDrop.chance;
   return {
     id: `skin-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     type: itemType,
-    rarity: getWeightedRareBall(caseConfig?.odds),
+    rarity: isAwpDrop ? "legendary" : getWeightedRareBall(caseConfig?.odds),
+    specialId: isAwpDrop ? AWP_PADDLE_SKIN_ID : undefined,
     condition: condition.label,
     float
   };
@@ -415,7 +483,9 @@ function createReelCard(skin) {
   card.className = `reel-card ${skin.rarity}`;
   card.innerHTML = `
     <span class="reel-card-rarity">${info.label}</span>
-    ${skin.type === "paddle"
+    ${skin.specialId === AWP_PADDLE_SKIN_ID
+      ? `<img class="reel-skin-image" src="${AWP_PADDLE_IMAGE}" alt="">`
+      : skin.type === "paddle"
       ? `<span class="reel-paddle ${skin.rarity}" aria-hidden="true"></span>`
       : `<span class="reel-ball ${skin.rarity}" aria-hidden="true"></span>`}
     <small>${skin.type.toUpperCase()}</small>
@@ -481,8 +551,12 @@ function renderCases() {
       <div class="case-copy">
         <span class="case-type">${caseConfig.itemType.toUpperCase()} DROP</span>
         <strong>${caseConfig.name}</strong>
-        <small>${topRarities}</small>
-        <small class="case-all-odds">${allOdds}</small>
+        <small>${caseConfig.specialDrop
+          ? `${Math.round(caseConfig.specialDrop.chance * 100)}% AWP Lightning Strike`
+          : topRarities}</small>
+        <small class="case-all-odds">${caseConfig.specialDrop
+          ? `90% standard drops (${allOdds})`
+          : allOdds}</small>
       </div>
       <button class="buy-button" ${coins < caseConfig.price ? "disabled" : ""}>
         OPEN ${caseConfig.price}
@@ -671,6 +745,10 @@ function bindMenuControls() {
   const shopButton = document.getElementById("shopButton");
   const closeCaseButton = document.getElementById("closeCaseButton");
   const caseContinueButton = document.getElementById("caseContinueButton");
+  const menuTitle = document.getElementById("menuTitle");
+  const adminCodeForm = document.getElementById("adminCodeForm");
+  let titleClicks = 0;
+  let lastTitleClickAt = 0;
 
   if (startButton) {
     startButton.addEventListener("click", startGame);
@@ -692,6 +770,46 @@ function bindMenuControls() {
   }
   if (caseContinueButton) {
     caseContinueButton.addEventListener("click", closeCaseOpening);
+  }
+  if (menuTitle) {
+    menuTitle.addEventListener("click", () => {
+      const now = Date.now();
+      titleClicks = now - lastTitleClickAt > 1200 ? 1 : titleClicks + 1;
+      lastTitleClickAt = now;
+      if (titleClicks === 5) {
+        setMenuMode("admin");
+        titleClicks = 0;
+      }
+    });
+  }
+  if (adminCodeForm) {
+    adminCodeForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const codeInput = document.getElementById("adminCodeInput");
+      const status = document.getElementById("adminCodeStatus");
+      if (codeInput.value.trim() !== AWP_PADDLE_UNLOCK_CODE) {
+        status.textContent = "INVALID CODE";
+        return;
+      }
+
+      let awpSkin = ownedSkins.find((skin) => skin.specialId === AWP_PADDLE_SKIN_ID);
+      if (!awpSkin) {
+        awpSkin = {
+          id: `skin-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          type: "paddle",
+          rarity: "legendary",
+          specialId: AWP_PADDLE_SKIN_ID,
+          condition: "Factory New",
+          float: 0.03
+        };
+        ownedSkins.push(awpSkin);
+      }
+      selectedPaddleSkinId = awpSkin.id;
+      inventoryType = "paddle";
+      saveProgress();
+      codeInput.value = "";
+      status.textContent = "AWP LIGHTNING STRIKE UNLOCKED AND EQUIPPED";
+    });
   }
 }
 
@@ -841,6 +959,7 @@ function update() {
     return;
   }
 
+  clampBallSpeed();
   moveBall();
 
   bounceOffWalls();   // collisions.js
@@ -877,9 +996,11 @@ function movePaddleLeft() {
 function movePaddle() {
   if (keys["arrowleft"] || keys["a"]) {
     movePaddleLeft();
+    lastPaddleDirection = -1;
   }
   if (keys["arrowright"] || keys["d"]) {
     paddle.x = paddle.x + paddle.speed;
+    lastPaddleDirection = 1;
   }
 
   // Keep the paddle on the screen.
@@ -1023,6 +1144,15 @@ function moveBall() {
   ball.y = ball.y + ball.vy;
 }
 
+function clampBallSpeed() {
+  const speed = Math.hypot(ball.vx, ball.vy);
+  if (speed > BALL_MAX_SPEED) {
+    const scale = BALL_MAX_SPEED / speed;
+    ball.vx *= scale;
+    ball.vy *= scale;
+  }
+}
+
 function drawArena() {
   const background = ctx.createLinearGradient(0, 0, 0, HEIGHT);
   background.addColorStop(0, "#101b2c");
@@ -1105,6 +1235,26 @@ function drawPaddle() {
   const equippedSkin = ownedSkins.find((skin) => skin.id === selectedPaddleSkinId) || { rarity: "common", float: 0.03 };
   const skinInfo = PADDLE_SKIN_INFO[equippedSkin.rarity || "common"];
   const color = skinInfo.color;
+  if (equippedSkin.specialId === AWP_PADDLE_SKIN_ID) {
+    ctx.save();
+    ctx.shadowColor = "#c77dff";
+    ctx.shadowBlur = 15;
+    ctx.fillStyle = "#160f25";
+    ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
+    if (awpPaddleTexture) {
+      const imageHeight = paddle.height + 4;
+      ctx.imageSmoothingEnabled = true;
+      if (lastPaddleDirection > 0) {
+        ctx.translate(paddle.x + paddle.width / 2, paddle.y + paddle.height / 2);
+        ctx.scale(-1, 1);
+        ctx.drawImage(awpPaddleTexture, -paddle.width / 2, -imageHeight / 2, paddle.width, imageHeight);
+      } else {
+        ctx.drawImage(awpPaddleTexture, paddle.x, paddle.y - 2, paddle.width, imageHeight);
+      }
+    }
+    ctx.restore();
+    return;
+  }
   const sideWidth = Math.max(10, paddle.width * 0.18);
 
   ctx.save();

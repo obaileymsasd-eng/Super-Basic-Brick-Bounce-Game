@@ -310,6 +310,46 @@ h1 {
   object-fit: contain;
 }
 
+.reel-skin-image {
+  width: 58px;
+  height: 30px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 6px rgba(199, 125, 255, 0.75));
+}
+
+.secret-code-form {
+  display: grid;
+  gap: 8px;
+  text-align: left;
+}
+
+.secret-code-form label {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.secret-code-form > div {
+  display: flex;
+  gap: 8px;
+}
+
+.secret-code-form input {
+  min-width: 0;
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  background: #080d18;
+  color: #e7f2ff;
+  font: inherit;
+}
+
+.secret-code-form p {
+  min-height: 1em;
+  margin: 0;
+  color: var(--cyan);
+  font-size: 10px;
+}
+
 .inventory-item strong,
 .shop-item p {
   color: #f1f7ff;

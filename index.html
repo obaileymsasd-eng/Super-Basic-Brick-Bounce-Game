@@ -28,7 +28,7 @@
 
       <div class="menu-overlay" id="menuOverlay">
         <div class="menu-panel">
-          <div class="menu-title">NEON<br><span>BREAK</span></div>
+          <div class="menu-title" id="menuTitle">NEON<br><span>BREAK</span></div>
           <div class="coin-display">COINS <strong id="coinCount">0</strong></div>
 
           <button id="startButton" class="menu-button primary">START</button>
@@ -59,6 +59,18 @@
                 <span id="marketTimer" class="market-timer"></span>
               </div>
               <div id="marketList" class="shop-list"></div>
+            </div>
+
+            <div class="panel-section" data-panel="admin">
+              <h3>SECRET PANEL</h3>
+              <form id="adminCodeForm" class="secret-code-form">
+                <label for="adminCodeInput">ENTER UNLOCK CODE</label>
+                <div>
+                  <input id="adminCodeInput" type="password" inputmode="numeric" autocomplete="off" maxlength="12">
+                  <button class="buy-button" type="submit">UNLOCK</button>
+                </div>
+                <p id="adminCodeStatus" role="status" aria-live="polite"></p>
+              </form>
             </div>
           </div>
         </div>
